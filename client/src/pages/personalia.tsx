@@ -859,7 +859,7 @@ export default function PersonaliaPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-personalia-title">Personalia</h1>
-          <p className="text-muted-foreground text-sm">Overzicht van alle medewerkers</p>
+          <p className="text-muted-foreground text-sm">{currentUser?.role === "admin" ? "Overzicht van alle medewerkers" : "Uw persoonlijke gegevens"}</p>
         </div>
         {currentUser?.role === "admin" && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -1002,17 +1002,19 @@ export default function PersonaliaPage() {
         />
       )}
 
-      {(!users || users.length === 0) ? (
-        <Card>
-          <CardContent className="flex flex-col items-center py-12">
-            <Users className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Geen medewerkers gevonden</p>
-          </CardContent>
-        </Card>
-      ) : (
-        (() => {
+      {(() => {
+        const visibleUsers = currentUser?.role === "admin" ? users : users?.filter(u => u.id === currentUser?.id);
+        if (!visibleUsers || visibleUsers.length === 0) return (
+          <Card>
+            <CardContent className="flex flex-col items-center py-12">
+              <Users className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Geen medewerkers gevonden</p>
+            </CardContent>
+          </Card>
+        );
+        {
           const grouped: Record<string, User[]> = {};
-          users.forEach((u) => {
+          visibleUsers.forEach((u) => {
             const dept = u.department || "Geen afdeling";
             if (!grouped[dept]) grouped[dept] = [];
             grouped[dept].push(u);
@@ -1189,8 +1191,8 @@ export default function PersonaliaPage() {
               ))}
             </div>
           );
-        })()
-      )}
+        }
+      })()}
     </div>
   );
 }
