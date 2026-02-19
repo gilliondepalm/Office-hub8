@@ -617,12 +617,12 @@ function OrganogramTab() {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary mx-auto mb-2">
               <Network className="h-6 w-6" />
             </div>
-            <h3 className="font-semibold" data-testid="text-organogram-directie">Directie / Beheer</h3>
+            <h3 className="font-semibold" data-testid="text-organogram-directie">Directie & Staf</h3>
             <div className="mt-2 space-y-1">
               {directionTeam.map((u) => (
                 <div key={u.id} className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
                   <span>{u.fullName}</span>
-                  <Badge variant="secondary" className="text-xs">{u.role}</Badge>
+                  <Badge variant="secondary" className="text-xs">directeur</Badge>
                 </div>
               ))}
             </div>
