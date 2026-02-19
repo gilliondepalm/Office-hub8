@@ -607,7 +607,8 @@ function OrganogramTab() {
     return <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-20" />)}</div>;
   }
 
-  const directionTeam = users.filter((u) => u.role === "admin");
+  const directeur = users.find((u) => u.role === "admin" && u.username === "directeur");
+  const stafAdmins = users.filter((u) => u.role === "admin" && u.username !== "directeur");
 
   return (
     <div className="space-y-6">
@@ -619,10 +620,16 @@ function OrganogramTab() {
             </div>
             <h3 className="font-semibold" data-testid="text-organogram-directie">Directie & Staf</h3>
             <div className="mt-2 space-y-1">
-              {directionTeam.map((u) => (
+              {directeur && (
+                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{directeur.fullName}</span>
+                  <Badge variant="default" className="text-xs">directeur</Badge>
+                </div>
+              )}
+              {stafAdmins.map((u) => (
                 <div key={u.id} className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
                   <span>{u.fullName}</span>
-                  <Badge variant="secondary" className="text-xs">directeur</Badge>
+                  <Badge variant="secondary" className="text-xs">admin</Badge>
                 </div>
               ))}
             </div>
