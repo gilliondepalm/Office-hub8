@@ -322,11 +322,17 @@ export async function registerRoutes(
           a => a.userId === u.id && a.type === "vacation" &&
             new Date(a.startDate).getFullYear() === currentYear
         );
+        const userSickAbsences = allAbsences.filter(
+          a => a.userId === u.id && a.type === "sick" &&
+            new Date(a.startDate).getFullYear() === currentYear &&
+            (a.status === "approved" || a.status === "pending")
+        );
         const approved = userVacAbsences.filter(a => a.status === "approved");
         const pending = userVacAbsences.filter(a => a.status === "pending");
         const geplandDays = countDays(pending);
         const toegekendDays = countDays(approved);
         const opgenomenDays = countDaysUpTo(approved, todayStr);
+        const sickDays = countDays(userSickAbsences);
         const total = u.vacationDaysTotal ?? 25;
         return {
           userId: u.id,
@@ -336,6 +342,7 @@ export async function registerRoutes(
           geplandDays,
           toegekendDays,
           opgenomenDays,
+          sickDays,
           remainingDays: total - toegekendDays - geplandDays,
         };
       });

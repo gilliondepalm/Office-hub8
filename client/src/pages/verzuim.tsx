@@ -498,6 +498,7 @@ export default function VerzuimPage() {
                         <TableHead className="text-right">Gepland</TableHead>
                         <TableHead className="text-right">Toegekend</TableHead>
                         <TableHead className="text-right">Opgenomen</TableHead>
+                        <TableHead className="text-right">Ziek</TableHead>
                         <TableHead className="text-right">Resterend</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -508,7 +509,7 @@ export default function VerzuimPage() {
                         return departments.map(dept => (
                           <>
                             <TableRow key={`dept-${dept}`}>
-                              <TableCell colSpan={6} className="bg-muted/50 font-bold text-sm py-2">
+                              <TableCell colSpan={7} className="bg-muted/50 font-bold text-sm py-2">
                                 {dept}
                               </TableCell>
                             </TableRow>
@@ -525,6 +526,13 @@ export default function VerzuimPage() {
                                 </TableCell>
                                 <TableCell className="text-right text-sm">{b.toegekendDays}</TableCell>
                                 <TableCell className="text-right text-sm">{b.opgenomenDays}</TableCell>
+                                <TableCell className="text-right text-sm">
+                                  {b.sickDays > 0 ? (
+                                    <Badge variant="destructive" className="text-xs">{b.sickDays}</Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">0</span>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-right">
                                   <Badge variant={b.remainingDays <= 3 ? "destructive" : b.remainingDays <= 10 ? "outline" : "default"} className="text-xs">
                                     {b.remainingDays}
