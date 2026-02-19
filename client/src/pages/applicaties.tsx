@@ -250,7 +250,7 @@ export default function ApplicatiesPage() {
                     )} />
                     <FormField control={appForm.control} name="description" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Beschrijving (optioneel)</FormLabel>
+                        <FormLabel>Icon</FormLabel>
                         <FormControl><Textarea {...field} placeholder="Korte beschrijving van de applicatie" data-testid="input-app-description" /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -354,7 +354,7 @@ export default function ApplicatiesPage() {
                           <TableHead>Naam</TableHead>
                           <TableHead>Netwerkpad</TableHead>
                           <TableHead>URL</TableHead>
-                          <TableHead>Beschrijving</TableHead>
+                          <TableHead>Icon</TableHead>
                           <TableHead>Gebruikers</TableHead>
                           <TableHead className="w-12"></TableHead>
                         </TableRow>
