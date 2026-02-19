@@ -407,9 +407,21 @@ export default function ApplicatiesPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {myApps.map(app => (
-                <Card key={app.accessId} className="hover-elevate" data-testid={`card-my-app-${app.id}`}>
+                <Card
+                  key={app.accessId}
+                  className="hover-elevate cursor-pointer"
+                  data-testid={`card-my-app-${app.id}`}
+                  onClick={() => {
+                    if (app.url) {
+                      window.open(app.url, "_blank", "noopener,noreferrer");
+                    } else if (app.path) {
+                      navigator.clipboard.writeText(app.path);
+                      toast({ title: "Pad gekopieerd", description: "Het netwerkpad is gekopieerd naar het klembord." });
+                    }
+                  }}
+                >
                   <CardContent className="p-5">
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                         <AppWindow className="h-5 w-5" />
                       </div>
@@ -419,31 +431,7 @@ export default function ApplicatiesPage() {
                           <p className="text-xs text-muted-foreground truncate">{app.description}</p>
                         )}
                       </div>
-                    </div>
-                    {app.path && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                        <FolderOpen className="h-3 w-3 shrink-0" />
-                        <span className="font-mono truncate">{app.path}</span>
-                      </div>
-                    )}
-                    <div className="flex gap-2 flex-wrap">
-                      {app.url && (
-                        <Button size="sm" variant="default" asChild>
-                          <a href={app.url} target="_blank" rel="noopener noreferrer" data-testid={`button-launch-url-${app.id}`}>
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            Openen
-                          </a>
-                        </Button>
-                      )}
-                      {app.path && (
-                        <Button size="sm" variant="outline" onClick={() => {
-                          navigator.clipboard.writeText(app.path!);
-                          toast({ title: "Pad gekopieerd", description: app.path! });
-                        }} data-testid={`button-copy-path-${app.id}`}>
-                          <FolderOpen className="h-3 w-3 mr-1" />
-                          Pad Kopiëren
-                        </Button>
-                      )}
+                      <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
                     </div>
                   </CardContent>
                 </Card>
