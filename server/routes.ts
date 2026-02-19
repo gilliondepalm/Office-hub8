@@ -301,12 +301,16 @@ export async function registerRoutes(
         return days;
       };
 
+      const todayStr = new Date().toISOString().split("T")[0];
+
       const balances = allUsers.filter(u => u.active).map(u => {
         const userVacAbsences = allAbsences.filter(
           a => a.userId === u.id && a.type === "vacation" &&
             new Date(a.startDate).getFullYear() === currentYear
         );
-        const usedDays = countDays(userVacAbsences.filter(a => a.status === "approved"));
+        const approved = userVacAbsences.filter(a => a.status === "approved");
+        const usedDays = countDays(approved.filter(a => a.endDate <= todayStr));
+        const plannedDays = countDays(approved.filter(a => a.startDate > todayStr));
         const pendingDays = countDays(userVacAbsences.filter(a => a.status === "pending"));
         const total = u.vacationDaysTotal ?? 25;
         return {
@@ -314,8 +318,9 @@ export async function registerRoutes(
           userName: u.fullName,
           totalDays: total,
           usedDays,
+          plannedDays,
           pendingDays,
-          remainingDays: total - usedDays - pendingDays,
+          remainingDays: total - usedDays - plannedDays - pendingDays,
         };
       });
       res.json(balances);
