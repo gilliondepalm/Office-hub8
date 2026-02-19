@@ -415,10 +415,8 @@ export default function ApplicatiesPage() {
                     if (app.url) {
                       window.open(app.url, "_blank", "noopener,noreferrer");
                     } else if (app.path) {
-                      const filePath = "file:///" + app.path.replace(/\\/g, "/");
-                      window.open(filePath);
                       navigator.clipboard.writeText(app.path);
-                      toast({ title: "Applicatie starten", description: "Het programma wordt geopend. Het pad is ook gekopieerd naar het klembord." });
+                      toast({ title: "Pad gekopieerd", description: "Open Windows Verkenner (Win+E) en plak het pad (Ctrl+V) in de adresbalk om het programma te starten.", duration: 8000 });
                     }
                   }}
                 >
