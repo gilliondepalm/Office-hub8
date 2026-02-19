@@ -89,6 +89,18 @@ export const appAccess = pgTable("app_access", {
   grantedAt: timestamp("granted_at").notNull().defaultNow(),
 });
 
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fromUserId: varchar("from_user_id").references(() => users.id).notNull(),
+  toUserId: varchar("to_user_id").references(() => users.id).notNull(),
+  subject: text("subject").notNull(),
+  content: text("content").notNull(),
+  reply: text("reply"),
+  repliedAt: timestamp("replied_at"),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertEventSchema = createInsertSchema(events).omit({ id: true });
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, createdAt: true });
@@ -97,6 +109,7 @@ export const insertAbsenceSchema = createInsertSchema(absences).omit({ id: true 
 export const insertRewardSchema = createInsertSchema(rewards).omit({ id: true, awardedAt: true });
 export const insertApplicationSchema = createInsertSchema(applications).omit({ id: true });
 export const insertAppAccessSchema = createInsertSchema(appAccess).omit({ id: true, grantedAt: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, reply: true, repliedAt: true, read: true });
 
 export const loginSchema = z.object({
   username: z.string().min(1, "Gebruikersnaam is verplicht"),
@@ -119,3 +132,5 @@ export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
 export type InsertAppAccess = z.infer<typeof insertAppAccessSchema>;
 export type AppAccess = typeof appAccess.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;
