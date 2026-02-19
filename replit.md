@@ -16,7 +16,7 @@ A comprehensive office dashboard application with 9 modules and granular permiss
 3. **Aankondigingen** - Announcements with priority levels, pinning, PDF attachments, and direct messaging (admin/manager to employee with reply)
 4. **Organisatie** - Department management with tabs: Afdelingen (department cards with manager info), AO-Procedures (admin-managed procedures with step-by-step instructions per department), Organogram (visual org chart), CAO Info (collective labor agreement overview), Wetgeving (legislation links grouped by category)
 5. **Personalia** - Employee directory with roles and departments
-6. **Verzuim** - Absence/leave management with approval workflow
+6. **Verzuim** - Absence/leave management with approval workflow, BVVD (bijzonder verlof) with predefined reasons, vacation day balance tracking per employee, admin vacation day allowance management
 7. **Beloningsysteem** - Points-based rewards with leaderboard
 8. **Applicaties** - Application access management with user permissions
 9. **Beheer** - Admin-only user permissions management (toggle module access per user)
@@ -68,6 +68,8 @@ All routes prefixed with `/api/` and require authentication except login.
 - POST /api/position-history - Create position entry (admin only): { userId, functionTitle, startDate, endDate?, salary?, notes? }
 - PATCH /api/position-history/:id - Update position entry (admin only)
 - DELETE /api/position-history/:id - Delete position entry (admin only)
+- GET /api/vacation-balance - Vacation day balance for all active employees
+- PATCH /api/users/:id/vacation-days - Admin only, set vacation day allowance: { vacationDaysTotal }
 - GET /api/legislation - All legislation links
 - POST /api/legislation - Create legislation link (admin only): { title, url, description?, category }
 - DELETE /api/legislation/:id - Delete legislation link (admin only)

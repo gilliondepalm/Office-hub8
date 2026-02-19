@@ -270,6 +270,53 @@ export async function registerRoutes(
     res.json({ message: "Verwijderd" });
   });
 
+  app.get("/api/vacation-balance", requireAuth, async (req, res) => {
+    try {
+      const allUsers = await storage.getUsers();
+      const allAbsences = await storage.getAbsences();
+      const currentYear = new Date().getFullYear();
+
+      const balances = allUsers.filter(u => u.active).map(u => {
+        const userVacationAbsences = allAbsences.filter(
+          a => a.userId === u.id && a.type === "vacation" && a.status === "approved" &&
+            new Date(a.startDate).getFullYear() === currentYear
+        );
+        let usedDays = 0;
+        for (const a of userVacationAbsences) {
+          const start = new Date(a.startDate);
+          const end = new Date(a.endDate);
+          const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          usedDays += diff;
+        }
+        const total = u.vacationDaysTotal ?? 25;
+        return {
+          userId: u.id,
+          userName: u.fullName,
+          totalDays: total,
+          usedDays,
+          remainingDays: total - usedDays,
+        };
+      });
+      res.json(balances);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Fout bij ophalen saldo" });
+    }
+  });
+
+  app.patch("/api/users/:id/vacation-days", requireAdmin, async (req, res) => {
+    try {
+      const { vacationDaysTotal } = req.body;
+      if (typeof vacationDaysTotal !== "number" || vacationDaysTotal < 0) {
+        return res.status(400).json({ message: "Ongeldig aantal vakantiedagen" });
+      }
+      const user = await storage.updateUser(req.params.id, { vacationDaysTotal } as any);
+      const { password: _, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Bijwerken mislukt" });
+    }
+  });
+
   app.get("/api/absences", requireAuth, async (_req, res) => {
     const all = await storage.getAbsences();
     res.json(all);
