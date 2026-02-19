@@ -309,18 +309,19 @@ export async function registerRoutes(
             new Date(a.startDate).getFullYear() === currentYear
         );
         const approved = userVacAbsences.filter(a => a.status === "approved");
-        const usedDays = countDays(approved.filter(a => a.endDate <= todayStr));
-        const plannedDays = countDays(approved.filter(a => a.startDate > todayStr));
-        const pendingDays = countDays(userVacAbsences.filter(a => a.status === "pending"));
+        const pending = userVacAbsences.filter(a => a.status === "pending");
+        const geplandDays = countDays(pending);
+        const toegekendDays = countDays(approved);
+        const opgenomenDays = countDays(approved.filter(a => a.endDate <= todayStr));
         const total = u.vacationDaysTotal ?? 25;
         return {
           userId: u.id,
           userName: u.fullName,
           totalDays: total,
-          usedDays,
-          plannedDays,
-          pendingDays,
-          remainingDays: total - usedDays - plannedDays - pendingDays,
+          geplandDays,
+          toegekendDays,
+          opgenomenDays,
+          remainingDays: total - toegekendDays - geplandDays,
         };
       });
       res.json(balances);

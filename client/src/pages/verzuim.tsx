@@ -63,9 +63,9 @@ type VacationBalance = {
   userId: string;
   userName: string;
   totalDays: number;
-  usedDays: number;
-  plannedDays: number;
-  pendingDays: number;
+  geplandDays: number;
+  toegekendDays: number;
+  opgenomenDays: number;
   remainingDays: number;
 };
 
@@ -359,12 +359,12 @@ export default function VerzuimPage() {
                   <span className="text-muted-foreground">Mijn vakantiesaldo:</span>{" "}
                   <span className="font-semibold" data-testid="text-my-remaining">{myBalance.remainingDays}</span>
                   <span className="text-muted-foreground"> van {myBalance.totalDays} dagen resterend</span>
-                  <span className="text-muted-foreground"> ({myBalance.usedDays} opgenomen</span>
-                  {myBalance.plannedDays > 0 && (
-                    <span className="text-muted-foreground">, {myBalance.plannedDays} gepland</span>
+                  <span className="text-muted-foreground"> ({myBalance.opgenomenDays} opgenomen</span>
+                  {myBalance.toegekendDays > myBalance.opgenomenDays && (
+                    <span className="text-muted-foreground">, {myBalance.toegekendDays} toegekend</span>
                   )}
-                  {myBalance.pendingDays > 0 && (
-                    <span className="text-muted-foreground">, {myBalance.pendingDays} aangevraagd</span>
+                  {myBalance.geplandDays > 0 && (
+                    <span className="text-muted-foreground">, {myBalance.geplandDays} gepland</span>
                   )}
                   <span className="text-muted-foreground">)</span>
                 </div>
@@ -479,9 +479,9 @@ export default function VerzuimPage() {
                       <TableRow>
                         <TableHead>Medewerker</TableHead>
                         <TableHead className="text-right">Totaal</TableHead>
-                        <TableHead className="text-right">Opgenomen</TableHead>
                         <TableHead className="text-right">Gepland</TableHead>
-                        <TableHead className="text-right">Aangevraagd</TableHead>
+                        <TableHead className="text-right">Toegekend</TableHead>
+                        <TableHead className="text-right">Opgenomen</TableHead>
                         <TableHead className="text-right">Resterend</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -490,21 +490,15 @@ export default function VerzuimPage() {
                         <TableRow key={b.userId} data-testid={`row-balance-${b.userId}`}>
                           <TableCell className="font-medium text-sm">{b.userName}</TableCell>
                           <TableCell className="text-right text-sm">{b.totalDays}</TableCell>
-                          <TableCell className="text-right text-sm">{b.usedDays}</TableCell>
                           <TableCell className="text-right text-sm">
-                            {b.plannedDays > 0 ? (
-                              <Badge variant="outline" className="text-xs">{b.plannedDays}</Badge>
+                            {b.geplandDays > 0 ? (
+                              <Badge variant="outline" className="text-xs">{b.geplandDays}</Badge>
                             ) : (
                               <span className="text-muted-foreground">0</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right text-sm">
-                            {b.pendingDays > 0 ? (
-                              <Badge variant="outline" className="text-xs">{b.pendingDays}</Badge>
-                            ) : (
-                              <span className="text-muted-foreground">0</span>
-                            )}
-                          </TableCell>
+                          <TableCell className="text-right text-sm">{b.toegekendDays}</TableCell>
+                          <TableCell className="text-right text-sm">{b.opgenomenDays}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={b.remainingDays <= 3 ? "destructive" : b.remainingDays <= 10 ? "outline" : "default"} className="text-xs">
                               {b.remainingDays}
