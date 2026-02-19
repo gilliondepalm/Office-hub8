@@ -41,6 +41,8 @@ const userFormSchema = z.object({
 });
 
 const editFormSchema = z.object({
+  username: z.string().min(1, "Gebruikersnaam is verplicht"),
+  password: z.string().optional(),
   fullName: z.string().min(1, "Volledige naam is verplicht"),
   email: z.string().email("Ongeldig e-mailadres"),
   role: z.string(),
@@ -68,6 +70,8 @@ function EditDialog({
   const form = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
     defaultValues: {
+      username: user.username,
+      password: "",
       fullName: user.fullName,
       email: user.email,
       role: user.role,
@@ -79,11 +83,19 @@ function EditDialog({
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof editFormSchema>) => {
-      await apiRequest("PATCH", `/api/users/${user.id}`, {
-        ...data,
+      const payload: Record<string, any> = {
+        username: data.username,
+        fullName: data.fullName,
+        email: data.email,
+        role: data.role,
         department: data.department || null,
+        startDate: data.startDate,
         birthDate: data.birthDate || null,
-      });
+      };
+      if (data.password && data.password.length > 0) {
+        payload.password = data.password;
+      }
+      await apiRequest("PATCH", `/api/users/${user.id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -103,6 +115,22 @@ function EditDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="username" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Gebruikersnaam</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-edit-username" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="password" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Wachtwoord</FormLabel>
+                  <FormControl><Input {...field} type="password" placeholder="Laat leeg om niet te wijzigen" data-testid="input-edit-password" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="fullName" render={({ field }) => (
                 <FormItem>
