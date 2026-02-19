@@ -426,10 +426,7 @@ export default function ApplicatiesPage() {
                         <AppWindow className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-sm truncate">{app.name}</h3>
-                        {app.description && (
-                          <p className="text-xs text-muted-foreground truncate">{app.description}</p>
-                        )}
+                        <h3 className="font-semibold text-sm truncate">{app.description || app.name}</h3>
                       </div>
                       <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
                     </div>
