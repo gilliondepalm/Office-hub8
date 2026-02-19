@@ -247,5 +247,20 @@ export async function seedDatabase() {
   await storage.createAppAccess({ userId: emp2.id, applicationId: app1.id, accessLevel: "read" });
   await storage.createAppAccess({ userId: emp2.id, applicationId: app4.id, accessLevel: "write" });
 
+  // Position History - Functie & salarisontwikkeling
+  await storage.createPositionHistory({ userId: admin.id, functionTitle: "IT Beheerder", startDate: "2018-03-01", endDate: "2020-06-30", salary: 3200, notes: "Startfunctie" });
+  await storage.createPositionHistory({ userId: admin.id, functionTitle: "Senior IT Beheerder", startDate: "2020-07-01", endDate: "2022-12-31", salary: 3800, notes: "Promotie na 2 jaar" });
+  await storage.createPositionHistory({ userId: admin.id, functionTitle: "IT Manager", startDate: "2023-01-01", endDate: null, salary: 4500, notes: "Leidinggevende rol" });
+
+  await storage.createPositionHistory({ userId: manager.id, functionTitle: "HR Medewerker", startDate: "2019-06-15", endDate: "2021-12-31", salary: 2900, notes: "Instap HR" });
+  await storage.createPositionHistory({ userId: manager.id, functionTitle: "HR Manager", startDate: "2022-01-01", endDate: null, salary: 3600, notes: "Promotie naar management" });
+
+  await storage.createPositionHistory({ userId: emp1.id, functionTitle: "Marketing Assistent", startDate: "2021-01-10", endDate: "2023-03-31", salary: 2500, notes: "Startfunctie" });
+  await storage.createPositionHistory({ userId: emp1.id, functionTitle: "Marketing Specialist", startDate: "2023-04-01", endDate: null, salary: 3100, notes: "Doorgegroeid" });
+
+  await storage.createPositionHistory({ userId: emp2.id, functionTitle: "Financieel Medewerker", startDate: "2020-09-01", endDate: null, salary: 2800, notes: "Startfunctie" });
+
+  await storage.createPositionHistory({ userId: emp3.id, functionTitle: "Junior IT Developer", startDate: "2024-11-01", endDate: null, salary: 2600, notes: "Nieuwe medewerker" });
+
   console.log("Database seeded successfully with sample data");
 }

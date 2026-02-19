@@ -62,6 +62,12 @@ All routes prefixed with `/api/` and require authentication except login.
 - GET /api/ao-instructions/:procedureId - Instructions for a procedure
 - POST /api/ao-instructions - Create instruction (admin only): { procedureId, title, content, sortOrder }
 - DELETE /api/ao-instructions/:id - Delete instruction (admin only)
+- GET /api/position-history/mine - Current user's position history
+- GET /api/position-history/user/:userId - Position history for a user (own data or admin)
+- GET /api/position-history - All position history (admin only)
+- POST /api/position-history - Create position entry (admin only): { userId, functionTitle, startDate, endDate?, salary?, notes? }
+- PATCH /api/position-history/:id - Update position entry (admin only)
+- DELETE /api/position-history/:id - Delete position entry (admin only)
 - GET /api/legislation - All legislation links
 - POST /api/legislation - Create legislation link (admin only): { title, url, description?, category }
 - DELETE /api/legislation/:id - Delete legislation link (admin only)

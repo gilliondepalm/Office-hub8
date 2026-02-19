@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import {
   users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
-  aoProcedures, aoInstructions, legislationLinks,
+  aoProcedures, aoInstructions, positionHistory, legislationLinks,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -14,6 +14,7 @@ import {
   type Message, type InsertMessage,
   type AoProcedure, type InsertAoProcedure,
   type AoInstruction, type InsertAoInstruction,
+  type PositionHistory, type InsertPositionHistory,
   type LegislationLink, type InsertLegislationLink,
 } from "@shared/schema";
 
@@ -82,6 +83,12 @@ export interface IStorage {
   getAoInstructions(procedureId: string): Promise<AoInstruction[]>;
   createAoInstruction(instr: InsertAoInstruction): Promise<AoInstruction>;
   deleteAoInstruction(id: string): Promise<void>;
+
+  getPositionHistoryByUser(userId: string): Promise<PositionHistory[]>;
+  getPositionHistoryAll(): Promise<(PositionHistory & { userName?: string })[]>;
+  createPositionHistory(entry: InsertPositionHistory): Promise<PositionHistory>;
+  updatePositionHistory(id: string, data: Partial<InsertPositionHistory>): Promise<PositionHistory>;
+  deletePositionHistory(id: string): Promise<void>;
 
   getLegislationLinks(): Promise<LegislationLink[]>;
   createLegislationLink(link: InsertLegislationLink): Promise<LegislationLink>;
@@ -434,6 +441,42 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAoInstruction(id: string): Promise<void> {
     await db.delete(aoInstructions).where(eq(aoInstructions.id, id));
+  }
+
+  async getPositionHistoryByUser(userId: string): Promise<PositionHistory[]> {
+    return db.select().from(positionHistory).where(eq(positionHistory.userId, userId)).orderBy(desc(positionHistory.startDate));
+  }
+
+  async getPositionHistoryAll(): Promise<(PositionHistory & { userName?: string })[]> {
+    const result = await db
+      .select({
+        id: positionHistory.id,
+        userId: positionHistory.userId,
+        functionTitle: positionHistory.functionTitle,
+        startDate: positionHistory.startDate,
+        endDate: positionHistory.endDate,
+        salary: positionHistory.salary,
+        notes: positionHistory.notes,
+        userName: users.fullName,
+      })
+      .from(positionHistory)
+      .leftJoin(users, eq(positionHistory.userId, users.id))
+      .orderBy(desc(positionHistory.startDate));
+    return result as any;
+  }
+
+  async createPositionHistory(entry: InsertPositionHistory): Promise<PositionHistory> {
+    const [created] = await db.insert(positionHistory).values(entry).returning();
+    return created;
+  }
+
+  async updatePositionHistory(id: string, data: Partial<InsertPositionHistory>): Promise<PositionHistory> {
+    const [updated] = await db.update(positionHistory).set(data).where(eq(positionHistory.id, id)).returning();
+    return updated;
+  }
+
+  async deletePositionHistory(id: string): Promise<void> {
+    await db.delete(positionHistory).where(eq(positionHistory.id, id));
   }
 
   async getLegislationLinks(): Promise<LegislationLink[]> {

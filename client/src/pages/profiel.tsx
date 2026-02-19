@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User as UserIcon, Mail, Building2, Shield, Clock, Award, CalendarDays, Cake } from "lucide-react";
+import { User as UserIcon, Mail, Building2, Shield, Clock, Award, CalendarDays, Cake, Briefcase, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Absence, Reward } from "@shared/schema";
+import type { Absence, Reward, PositionHistory } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 
 export default function ProfielPage() {
@@ -18,6 +18,10 @@ export default function ProfielPage() {
 
   const { data: myRewards, isLoading: loadingRewards } = useQuery<(Reward & { userName?: string })[]>({
     queryKey: ["/api/rewards/mine"],
+  });
+
+  const { data: myPositionHistory, isLoading: loadingHistory } = useQuery<PositionHistory[]>({
+    queryKey: ["/api/position-history/mine"],
   });
 
   if (!user) return null;
@@ -172,6 +176,53 @@ export default function ProfielPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2 pb-3">
+          <Briefcase className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm">Mijn Functie & Salarisontwikkeling</h3>
+          <Badge variant="secondary" className="ml-auto text-xs">{myPositionHistory?.length || 0}</Badge>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loadingHistory ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => <Skeleton key={i} className="h-16" />)}
+            </div>
+          ) : !myPositionHistory?.length ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Geen functiehistorie beschikbaar</p>
+          ) : (
+            <div className="space-y-2">
+              {myPositionHistory.map((entry, idx) => (
+                <div key={entry.id} className={`flex items-center gap-3 p-3 rounded-md ${idx === 0 ? "bg-primary/5" : "hover-elevate"}`} data-testid={`my-position-${entry.id}`}>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">
+                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium">{entry.functionTitle}</p>
+                      {!entry.endDate && <Badge variant="default" className="text-xs">Huidig</Badge>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(entry.startDate + "T00:00:00"), "d MMM yyyy", { locale: nl })}
+                      {" - "}
+                      {entry.endDate
+                        ? format(new Date(entry.endDate + "T00:00:00"), "d MMM yyyy", { locale: nl })
+                        : "heden"}
+                    </p>
+                    {entry.notes && <p className="text-xs text-muted-foreground">{entry.notes}</p>}
+                  </div>
+                  {entry.salary && (
+                    <span className="text-sm font-medium shrink-0 flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3 text-muted-foreground" />
+                      {new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(entry.salary)} /mnd
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 pb-3">

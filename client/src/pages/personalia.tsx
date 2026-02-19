@@ -21,12 +21,12 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Users, Mail, Building2, Pencil, UserCheck, UserX, CalendarDays } from "lucide-react";
+import { Plus, Users, Mail, Building2, Pencil, UserCheck, UserX, CalendarDays, Briefcase, TrendingUp, Trash2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { User, Department } from "@shared/schema";
+import type { User, Department, PositionHistory } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 
 const userFormSchema = z.object({
@@ -270,10 +270,269 @@ function DeactivateDialog({
   );
 }
 
+const positionFormSchema = z.object({
+  functionTitle: z.string().min(1, "Functie is verplicht"),
+  startDate: z.string().min(1, "Startdatum is verplicht"),
+  endDate: z.string().optional(),
+  salary: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+function PositionHistoryDialog({
+  user,
+  open,
+  onOpenChange,
+  isAdmin,
+}: {
+  user: User;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  isAdmin: boolean;
+}) {
+  const { toast } = useToast();
+  const [addOpen, setAddOpen] = useState(false);
+  const [editEntry, setEditEntry] = useState<PositionHistory | null>(null);
+
+  const { data: history, isLoading } = useQuery<PositionHistory[]>({
+    queryKey: ["/api/position-history/user", user.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/position-history/user/${user.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Fout bij ophalen");
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const form = useForm<z.infer<typeof positionFormSchema>>({
+    resolver: zodResolver(positionFormSchema),
+    defaultValues: { functionTitle: "", startDate: "", endDate: "", salary: "", notes: "" },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof positionFormSchema>) => {
+      await apiRequest("POST", "/api/position-history", {
+        userId: user.id,
+        functionTitle: data.functionTitle,
+        startDate: data.startDate,
+        endDate: data.endDate || null,
+        salary: data.salary ? parseInt(data.salary) : null,
+        notes: data.notes || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/position-history/user", user.id] });
+      toast({ title: "Functiehistorie toegevoegd" });
+      setAddOpen(false);
+      form.reset();
+    },
+    onError: (err: any) => {
+      toast({ title: "Fout bij toevoegen", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: z.infer<typeof positionFormSchema> }) => {
+      await apiRequest("PATCH", `/api/position-history/${id}`, {
+        functionTitle: data.functionTitle,
+        startDate: data.startDate,
+        endDate: data.endDate || null,
+        salary: data.salary ? parseInt(data.salary) : null,
+        notes: data.notes || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/position-history/user", user.id] });
+      toast({ title: "Functiehistorie bijgewerkt" });
+      setEditEntry(null);
+      form.reset();
+    },
+    onError: (err: any) => {
+      toast({ title: "Fout bij bijwerken", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/position-history/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/position-history/user", user.id] });
+      toast({ title: "Verwijderd" });
+    },
+  });
+
+  const formatCurrency = (amount: number | null) => {
+    if (!amount) return "-";
+    return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5" />
+            Functie & Salarisontwikkeling - {user.fullName}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : history && history.length > 0 ? (
+          <div className="space-y-3">
+            {history.map((entry, idx) => (
+              <Card key={entry.id} className={idx === 0 ? "border-primary/30" : ""}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium" data-testid={`text-position-title-${entry.id}`}>{entry.functionTitle}</p>
+                        {!entry.endDate && <Badge variant="default" className="text-xs">Huidig</Badge>}
+                      </div>
+                      <div className="flex items-center gap-4 mt-1 flex-wrap">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                          <CalendarDays className="h-3 w-3" />
+                          {format(new Date(entry.startDate + "T00:00:00"), "d MMM yyyy", { locale: nl })}
+                          {" - "}
+                          {entry.endDate
+                            ? format(new Date(entry.endDate + "T00:00:00"), "d MMM yyyy", { locale: nl })
+                            : "heden"}
+                        </span>
+                        <span className="text-sm font-medium flex items-center gap-1" data-testid={`text-salary-${entry.id}`}>
+                          <TrendingUp className="h-3 w-3 text-muted-foreground" />
+                          {formatCurrency(entry.salary)} /mnd
+                        </span>
+                      </div>
+                      {entry.notes && (
+                        <p className="text-xs text-muted-foreground mt-1">{entry.notes}</p>
+                      )}
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditEntry(entry);
+                            setAddOpen(false);
+                            form.reset({
+                              functionTitle: entry.functionTitle,
+                              startDate: entry.startDate,
+                              endDate: entry.endDate || "",
+                              salary: entry.salary ? String(entry.salary) : "",
+                              notes: entry.notes || "",
+                            });
+                          }}
+                          data-testid={`button-edit-position-${entry.id}`}
+                        >
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => deleteMutation.mutate(entry.id)}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`button-delete-position-${entry.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-4 text-center">Geen functiehistorie beschikbaar</p>
+        )}
+
+        {isAdmin && (
+          <div className="mt-2">
+            {(addOpen || editEntry) ? (
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm font-medium mb-3">{editEntry ? "Functie Bewerken" : "Nieuwe Functie Toevoegen"}</p>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit((d) => {
+                      if (editEntry) {
+                        updateMutation.mutate({ id: editEntry.id, data: d });
+                      } else {
+                        createMutation.mutate(d);
+                      }
+                    })} className="space-y-3">
+                      <FormField control={form.control} name="functionTitle" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Functietitel</FormLabel>
+                          <FormControl><Input {...field} placeholder="bijv. Senior Developer" data-testid="input-position-title" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField control={form.control} name="startDate" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Startdatum</FormLabel>
+                            <FormControl><Input {...field} type="date" data-testid="input-position-start" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="endDate" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Einddatum</FormLabel>
+                            <FormControl><Input {...field} type="date" placeholder="Leeg = huidig" data-testid="input-position-end" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField control={form.control} name="salary" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Salaris (bruto/mnd)</FormLabel>
+                            <FormControl><Input {...field} type="number" placeholder="bijv. 3500" data-testid="input-position-salary" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="notes" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Opmerking</FormLabel>
+                            <FormControl><Input {...field} placeholder="bijv. Promotie" data-testid="input-position-notes" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-position">
+                          {(createMutation.isPending || updateMutation.isPending) ? "Opslaan..." : editEntry ? "Wijzigen" : "Toevoegen"}
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => { setAddOpen(false); setEditEntry(null); form.reset(); }}>
+                          Annuleren
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            ) : (
+              <Button variant="outline" onClick={() => { setAddOpen(true); form.reset({ functionTitle: "", startDate: "", endDate: "", salary: "", notes: "" }); }} className="w-full" data-testid="button-add-position">
+                <Plus className="h-4 w-4 mr-2" />
+                Functie Toevoegen
+              </Button>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PersonaliaPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [deactivateUser, setDeactivateUser] = useState<User | null>(null);
+  const [historyUser, setHistoryUser] = useState<User | null>(null);
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
 
@@ -480,6 +739,15 @@ export default function PersonaliaPage() {
         />
       )}
 
+      {historyUser && (
+        <PositionHistoryDialog
+          user={historyUser}
+          open={!!historyUser}
+          onOpenChange={(open) => { if (!open) setHistoryUser(null); }}
+          isAdmin={currentUser?.role === "admin"}
+        />
+      )}
+
       {(!users || users.length === 0) ? (
         <Card>
           <CardContent className="flex flex-col items-center py-12">
@@ -533,7 +801,7 @@ export default function PersonaliaPage() {
                               <TableHead>Geboortedatum</TableHead>
                               <TableHead>In Dienst</TableHead>
                               <TableHead>Status</TableHead>
-                              {currentUser?.role === "admin" && <TableHead className="text-right">Acties</TableHead>}
+                              <TableHead className="text-right">Acties</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -595,42 +863,55 @@ export default function PersonaliaPage() {
                                       {u.active ? "Actief" : "Inactief"}
                                     </Badge>
                                   </TableCell>
-                                  {currentUser?.role === "admin" && (
-                                    <TableCell>
-                                      <div className="flex items-center justify-end gap-1">
+                                  <TableCell>
+                                    <div className="flex items-center justify-end gap-1">
+                                      {(currentUser?.role === "admin" || currentUser?.id === u.id) && (
                                         <Button
                                           size="icon"
                                           variant="ghost"
-                                          onClick={() => setEditUser(u)}
-                                          data-testid={`button-edit-user-${u.id}`}
+                                          onClick={() => setHistoryUser(u)}
+                                          data-testid={`button-history-user-${u.id}`}
+                                          title="Functie & Salaris"
                                         >
-                                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                                          <Briefcase className="h-4 w-4 text-muted-foreground" />
                                         </Button>
-                                        {u.id !== currentUser.id && (
-                                          u.active ? (
-                                            <Button
-                                              size="icon"
-                                              variant="ghost"
-                                              onClick={() => setDeactivateUser(u)}
-                                              data-testid={`button-deactivate-user-${u.id}`}
-                                            >
-                                              <UserX className="h-4 w-4 text-muted-foreground" />
-                                            </Button>
-                                          ) : (
-                                            <Button
-                                              size="icon"
-                                              variant="ghost"
-                                              onClick={() => activateMutation.mutate(u.id)}
-                                              disabled={activateMutation.isPending}
-                                              data-testid={`button-activate-user-${u.id}`}
-                                            >
-                                              <UserCheck className="h-4 w-4 text-muted-foreground" />
-                                            </Button>
-                                          )
-                                        )}
-                                      </div>
-                                    </TableCell>
-                                  )}
+                                      )}
+                                      {currentUser?.role === "admin" && (
+                                        <>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={() => setEditUser(u)}
+                                            data-testid={`button-edit-user-${u.id}`}
+                                          >
+                                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                                          </Button>
+                                          {u.id !== currentUser.id && (
+                                            u.active ? (
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                onClick={() => setDeactivateUser(u)}
+                                                data-testid={`button-deactivate-user-${u.id}`}
+                                              >
+                                                <UserX className="h-4 w-4 text-muted-foreground" />
+                                              </Button>
+                                            ) : (
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                onClick={() => activateMutation.mutate(u.id)}
+                                                disabled={activateMutation.isPending}
+                                                data-testid={`button-activate-user-${u.id}`}
+                                              >
+                                                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                              </Button>
+                                            )
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  </TableCell>
                                 </TableRow>
                               );
                             })}

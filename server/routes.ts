@@ -12,7 +12,7 @@ import {
   insertUserSchema, insertEventSchema, insertAnnouncementSchema,
   insertDepartmentSchema, insertAbsenceSchema, insertRewardSchema,
   insertApplicationSchema, insertAppAccessSchema, insertMessageSchema,
-  insertAoProcedureSchema, insertAoInstructionSchema, insertLegislationLinkSchema,
+  insertAoProcedureSchema, insertAoInstructionSchema, insertPositionHistorySchema, insertLegislationLinkSchema,
 } from "@shared/schema";
 
 const PgStore = pgSession(session);
@@ -481,6 +481,53 @@ export async function registerRoutes(
 
   app.delete("/api/ao-instructions/:id", requireAdmin, async (req, res) => {
     await storage.deleteAoInstruction(req.params.id);
+    res.json({ message: "Verwijderd" });
+  });
+
+  // Position History
+  app.get("/api/position-history/mine", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const history = await storage.getPositionHistoryByUser(userId);
+    res.json(history);
+  });
+
+  app.get("/api/position-history/user/:userId", requireAuth, async (req, res) => {
+    const currentUserId = (req.session as any).userId;
+    const currentUser = await storage.getUser(currentUserId);
+    if (!currentUser) return res.status(401).json({ message: "Niet ingelogd" });
+    if (currentUser.role !== "admin" && currentUserId !== req.params.userId) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    const history = await storage.getPositionHistoryByUser(req.params.userId);
+    res.json(history);
+  });
+
+  app.get("/api/position-history", requireAdmin, async (_req, res) => {
+    const all = await storage.getPositionHistoryAll();
+    res.json(all);
+  });
+
+  app.post("/api/position-history", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertPositionHistorySchema.parse(req.body);
+      const entry = await storage.createPositionHistory(parsed);
+      res.json(entry);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Validatiefout" });
+    }
+  });
+
+  app.patch("/api/position-history/:id", requireAdmin, async (req, res) => {
+    try {
+      const entry = await storage.updatePositionHistory(req.params.id, req.body);
+      res.json(entry);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Bijwerken mislukt" });
+    }
+  });
+
+  app.delete("/api/position-history/:id", requireAdmin, async (req, res) => {
+    await storage.deletePositionHistory(req.params.id);
     res.json({ message: "Verwijderd" });
   });
 
