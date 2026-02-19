@@ -11,7 +11,7 @@ import fs from "fs";
 import {
   insertUserSchema, insertEventSchema, insertAnnouncementSchema,
   insertDepartmentSchema, insertAbsenceSchema, insertRewardSchema,
-  insertApplicationSchema, insertAppAccessSchema,
+  insertApplicationSchema, insertAppAccessSchema, insertMessageSchema,
 } from "@shared/schema";
 
 const PgStore = pgSession(session);
@@ -371,6 +371,64 @@ export async function registerRoutes(
   app.delete("/api/app-access/:id", requireAuth, async (req, res) => {
     await storage.deleteAppAccess(req.params.id);
     res.json({ message: "Verwijderd" });
+  });
+
+  app.get("/api/messages", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const msgs = await storage.getMessagesByUser(userId);
+    res.json(msgs);
+  });
+
+  app.post("/api/messages", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ message: "Alleen beheerders en managers mogen berichten sturen" });
+      }
+      const parsed = insertMessageSchema.parse({ ...req.body, fromUserId: userId });
+      const msg = await storage.createMessage(parsed);
+      res.json(msg);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Validatiefout" });
+    }
+  });
+
+  app.patch("/api/messages/:id/reply", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const allMessages = await storage.getMessagesByUser(userId);
+      const msg = allMessages.find(m => m.id === req.params.id);
+      if (!msg || msg.toUserId !== userId) {
+        return res.status(403).json({ message: "Geen toegang tot dit bericht" });
+      }
+      if (msg.reply) {
+        return res.status(400).json({ message: "Er is al gereageerd op dit bericht" });
+      }
+      const { reply } = req.body;
+      if (!reply || !reply.trim()) {
+        return res.status(400).json({ message: "Reactie is verplicht" });
+      }
+      const updated = await storage.replyToMessage(req.params.id, reply);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Reageren mislukt" });
+    }
+  });
+
+  app.patch("/api/messages/:id/read", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const allMessages = await storage.getMessagesByUser(userId);
+      const msg = allMessages.find(m => m.id === req.params.id);
+      if (!msg || msg.toUserId !== userId) {
+        return res.status(403).json({ message: "Geen toegang tot dit bericht" });
+      }
+      await storage.markMessageRead(req.params.id);
+      res.json({ message: "Gelezen" });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Bijwerken mislukt" });
+    }
   });
 
   return httpServer;

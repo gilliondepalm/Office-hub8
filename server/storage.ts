@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import {
-  users, events, announcements, departments, absences, rewards, applications, appAccess,
+  users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -10,6 +10,7 @@ import {
   type Reward, type InsertReward,
   type Application, type InsertApplication,
   type AppAccess, type InsertAppAccess,
+  type Message, type InsertMessage,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -63,6 +64,11 @@ export interface IStorage {
     totalRewardPoints: number;
     pendingAbsences: number;
   }>;
+
+  getMessagesByUser(userId: string): Promise<(Message & { fromUserName?: string; toUserName?: string })[]>;
+  createMessage(msg: InsertMessage): Promise<Message>;
+  replyToMessage(id: string, reply: string): Promise<Message>;
+  markMessageRead(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -329,6 +335,47 @@ export class DatabaseStorage implements IStorage {
       totalRewardPoints: rewardSum?.total || 0,
       pendingAbsences: pendingAbsenceCount?.count || 0,
     };
+  }
+
+  async getMessagesByUser(userId: string): Promise<(Message & { fromUserName?: string; toUserName?: string })[]> {
+    const { alias } = await import("drizzle-orm/pg-core");
+    const { or } = await import("drizzle-orm");
+    const fromUser = alias(users, "from_user");
+    const toUser = alias(users, "to_user");
+    const result = await db
+      .select({
+        id: messages.id,
+        fromUserId: messages.fromUserId,
+        toUserId: messages.toUserId,
+        subject: messages.subject,
+        content: messages.content,
+        reply: messages.reply,
+        repliedAt: messages.repliedAt,
+        read: messages.read,
+        createdAt: messages.createdAt,
+        fromUserName: fromUser.fullName,
+        toUserName: toUser.fullName,
+      })
+      .from(messages)
+      .leftJoin(fromUser, eq(messages.fromUserId, fromUser.id))
+      .leftJoin(toUser, eq(messages.toUserId, toUser.id))
+      .where(or(eq(messages.fromUserId, userId), eq(messages.toUserId, userId)))
+      .orderBy(desc(messages.createdAt));
+    return result as any;
+  }
+
+  async createMessage(msg: InsertMessage): Promise<Message> {
+    const [created] = await db.insert(messages).values(msg).returning();
+    return created;
+  }
+
+  async replyToMessage(id: string, reply: string): Promise<Message> {
+    const [updated] = await db.update(messages).set({ reply, repliedAt: new Date() }).where(eq(messages.id, id)).returning();
+    return updated;
+  }
+
+  async markMessageRead(id: string): Promise<void> {
+    await db.update(messages).set({ read: true }).where(eq(messages.id, id));
   }
 }
 
