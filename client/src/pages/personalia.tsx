@@ -21,12 +21,13 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Users, Mail, Building2, Pencil, UserCheck, UserX, CalendarDays, Briefcase, TrendingUp, Trash2 } from "lucide-react";
+import { Plus, Users, Mail, Building2, Pencil, UserCheck, UserX, CalendarDays, Briefcase, TrendingUp, Trash2, GraduationCap, CheckCircle2, Circle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { User, Department, PositionHistory } from "@shared/schema";
+import type { User, Department, PositionHistory, PersonalDevelopment } from "@shared/schema";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/lib/auth";
 
 const userFormSchema = z.object({
@@ -528,11 +529,255 @@ function PositionHistoryDialog({
   );
 }
 
+const devFormSchema = z.object({
+  trainingName: z.string().min(1, "Naam opleiding/training is verplicht"),
+  startDate: z.string().min(1, "Startdatum is verplicht"),
+  endDate: z.string().optional(),
+  completed: z.boolean().default(false),
+});
+
+function PersonalDevelopmentDialog({
+  user,
+  open,
+  onOpenChange,
+  isAdmin,
+}: {
+  user: User;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  isAdmin: boolean;
+}) {
+  const { toast } = useToast();
+  const [addOpen, setAddOpen] = useState(false);
+  const [editEntry, setEditEntry] = useState<PersonalDevelopment | null>(null);
+
+  const form = useForm<z.infer<typeof devFormSchema>>({
+    resolver: zodResolver(devFormSchema),
+    defaultValues: { trainingName: "", startDate: "", endDate: "", completed: false },
+  });
+
+  const { data: devEntries, isLoading } = useQuery<PersonalDevelopment[]>({
+    queryKey: ["/api/personal-development/user", user.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/personal-development/user/${user.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Fout bij laden");
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof devFormSchema>) => {
+      await apiRequest("POST", "/api/personal-development", {
+        userId: user.id,
+        trainingName: data.trainingName,
+        startDate: data.startDate,
+        endDate: data.endDate || null,
+        completed: data.completed,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/personal-development/user", user.id] });
+      toast({ title: "Opleiding toegevoegd" });
+      setAddOpen(false);
+      form.reset();
+    },
+    onError: (err: any) => {
+      toast({ title: "Fout bij toevoegen", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: z.infer<typeof devFormSchema> }) => {
+      await apiRequest("PATCH", `/api/personal-development/${id}`, {
+        trainingName: data.trainingName,
+        startDate: data.startDate,
+        endDate: data.endDate || null,
+        completed: data.completed,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/personal-development/user", user.id] });
+      toast({ title: "Opleiding bijgewerkt" });
+      setEditEntry(null);
+      form.reset();
+    },
+    onError: (err: any) => {
+      toast({ title: "Fout bij bijwerken", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/personal-development/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/personal-development/user", user.id] });
+      toast({ title: "Verwijderd" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5" />
+            Persoonlijke Ontwikkeling - {user.fullName}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : devEntries && devEntries.length > 0 ? (
+          <div className="space-y-3">
+            {devEntries.map((entry) => (
+              <Card key={entry.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {entry.completed ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                        )}
+                        <p className="font-medium" data-testid={`text-dev-name-${entry.id}`}>{entry.trainingName}</p>
+                        <Badge variant={entry.completed ? "default" : "outline"} className="text-xs">
+                          {entry.completed ? "Afgerond" : "Lopend"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                        <CalendarDays className="h-3 w-3" />
+                        {format(new Date(entry.startDate + "T00:00:00"), "d MMM yyyy", { locale: nl })}
+                        {" - "}
+                        {entry.endDate
+                          ? format(new Date(entry.endDate + "T00:00:00"), "d MMM yyyy", { locale: nl })
+                          : "heden"}
+                      </p>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditEntry(entry);
+                            setAddOpen(false);
+                            form.reset({
+                              trainingName: entry.trainingName,
+                              startDate: entry.startDate,
+                              endDate: entry.endDate || "",
+                              completed: entry.completed,
+                            });
+                          }}
+                          data-testid={`button-edit-dev-${entry.id}`}
+                        >
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => deleteMutation.mutate(entry.id)}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`button-delete-dev-${entry.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-4 text-center">Geen opleidingen/trainingen beschikbaar</p>
+        )}
+
+        {isAdmin && (
+          <div className="mt-2">
+            {(addOpen || editEntry) ? (
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm font-medium mb-3">{editEntry ? "Opleiding Bewerken" : "Nieuwe Opleiding Toevoegen"}</p>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit((d) => {
+                      if (editEntry) {
+                        updateMutation.mutate({ id: editEntry.id, data: d });
+                      } else {
+                        createMutation.mutate(d);
+                      }
+                    })} className="space-y-3">
+                      <FormField control={form.control} name="trainingName" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Opleiding / Training</FormLabel>
+                          <FormControl><Input {...field} placeholder="bijv. ITIL Foundation" data-testid="input-dev-name" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField control={form.control} name="startDate" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Van</FormLabel>
+                            <FormControl><Input {...field} type="date" data-testid="input-dev-start" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="endDate" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tot</FormLabel>
+                            <FormControl><Input {...field} type="date" data-testid="input-dev-end" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                      <FormField control={form.control} name="completed" render={({ field }) => (
+                        <FormItem className="flex items-center gap-2">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-dev-completed"
+                            />
+                          </FormControl>
+                          <FormLabel className="!mt-0">Afgerond</FormLabel>
+                        </FormItem>
+                      )} />
+                      <div className="flex gap-2">
+                        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-dev">
+                          {(createMutation.isPending || updateMutation.isPending) ? "Opslaan..." : editEntry ? "Wijzigen" : "Toevoegen"}
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => { setAddOpen(false); setEditEntry(null); form.reset(); }}>
+                          Annuleren
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            ) : (
+              <Button variant="outline" onClick={() => { setAddOpen(true); form.reset({ trainingName: "", startDate: "", endDate: "", completed: false }); }} className="w-full" data-testid="button-add-dev">
+                <Plus className="h-4 w-4 mr-2" />
+                Opleiding Toevoegen
+              </Button>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PersonaliaPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [deactivateUser, setDeactivateUser] = useState<User | null>(null);
   const [historyUser, setHistoryUser] = useState<User | null>(null);
+  const [devUser, setDevUser] = useState<User | null>(null);
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
 
@@ -748,6 +993,15 @@ export default function PersonaliaPage() {
         />
       )}
 
+      {devUser && (
+        <PersonalDevelopmentDialog
+          user={devUser}
+          open={!!devUser}
+          onOpenChange={(open) => { if (!open) setDevUser(null); }}
+          isAdmin={currentUser?.role === "admin"}
+        />
+      )}
+
       {(!users || users.length === 0) ? (
         <Card>
           <CardContent className="flex flex-col items-center py-12">
@@ -866,15 +1120,26 @@ export default function PersonaliaPage() {
                                   <TableCell>
                                     <div className="flex items-center justify-end gap-1">
                                       {(currentUser?.role === "admin" || currentUser?.id === u.id) && (
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          onClick={() => setHistoryUser(u)}
-                                          data-testid={`button-history-user-${u.id}`}
-                                          title="Functie & Salaris"
-                                        >
-                                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                                        </Button>
+                                        <>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={() => setHistoryUser(u)}
+                                            data-testid={`button-history-user-${u.id}`}
+                                            title="Functie & Salaris"
+                                          >
+                                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={() => setDevUser(u)}
+                                            data-testid={`button-dev-user-${u.id}`}
+                                            title="Persoonlijke Ontwikkeling"
+                                          >
+                                            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                                          </Button>
+                                        </>
                                       )}
                                       {currentUser?.role === "admin" && (
                                         <>

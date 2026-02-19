@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User as UserIcon, Mail, Building2, Shield, Clock, Award, CalendarDays, Cake, Briefcase, TrendingUp } from "lucide-react";
+import { User as UserIcon, Mail, Building2, Shield, Clock, Award, CalendarDays, Cake, Briefcase, TrendingUp, GraduationCap, CheckCircle2, Circle } from "lucide-react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Absence, Reward, PositionHistory } from "@shared/schema";
+import type { Absence, Reward, PositionHistory, PersonalDevelopment } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 
 export default function ProfielPage() {
@@ -22,6 +22,10 @@ export default function ProfielPage() {
 
   const { data: myPositionHistory, isLoading: loadingHistory } = useQuery<PositionHistory[]>({
     queryKey: ["/api/position-history/mine"],
+  });
+
+  const { data: myDevelopment, isLoading: loadingDev } = useQuery<PersonalDevelopment[]>({
+    queryKey: ["/api/personal-development/mine"],
   });
 
   if (!user) return null;
@@ -217,6 +221,53 @@ export default function ProfielPage() {
                       {new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(entry.salary)} /mnd
                     </span>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2 pb-3">
+          <GraduationCap className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm">Mijn Persoonlijke Ontwikkeling</h3>
+          <Badge variant="secondary" className="ml-auto text-xs">{myDevelopment?.length || 0}</Badge>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loadingDev ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => <Skeleton key={i} className="h-16" />)}
+            </div>
+          ) : !myDevelopment?.length ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Geen opleidingen/trainingen beschikbaar</p>
+          ) : (
+            <div className="space-y-2">
+              {myDevelopment.map((entry) => (
+                <div key={entry.id} className="flex items-center gap-3 p-3 rounded-md hover-elevate" data-testid={`my-dev-${entry.id}`}>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">
+                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {entry.completed ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                      ) : (
+                        <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <p className="text-sm font-medium">{entry.trainingName}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(entry.startDate + "T00:00:00"), "d MMM yyyy", { locale: nl })}
+                      {" - "}
+                      {entry.endDate
+                        ? format(new Date(entry.endDate + "T00:00:00"), "d MMM yyyy", { locale: nl })
+                        : "heden"}
+                    </p>
+                  </div>
+                  <Badge variant={entry.completed ? "default" : "outline"} className="text-xs shrink-0">
+                    {entry.completed ? "Afgerond" : "Lopend"}
+                  </Badge>
                 </div>
               ))}
             </div>

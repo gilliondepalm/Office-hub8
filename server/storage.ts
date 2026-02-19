@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import {
   users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
-  aoProcedures, aoInstructions, positionHistory, legislationLinks,
+  aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -15,6 +15,7 @@ import {
   type AoProcedure, type InsertAoProcedure,
   type AoInstruction, type InsertAoInstruction,
   type PositionHistory, type InsertPositionHistory,
+  type PersonalDevelopment, type InsertPersonalDevelopment,
   type LegislationLink, type InsertLegislationLink,
 } from "@shared/schema";
 
@@ -89,6 +90,11 @@ export interface IStorage {
   createPositionHistory(entry: InsertPositionHistory): Promise<PositionHistory>;
   updatePositionHistory(id: string, data: Partial<InsertPositionHistory>): Promise<PositionHistory>;
   deletePositionHistory(id: string): Promise<void>;
+
+  getPersonalDevelopmentByUser(userId: string): Promise<PersonalDevelopment[]>;
+  createPersonalDevelopment(entry: InsertPersonalDevelopment): Promise<PersonalDevelopment>;
+  updatePersonalDevelopment(id: string, data: Partial<InsertPersonalDevelopment>): Promise<PersonalDevelopment>;
+  deletePersonalDevelopment(id: string): Promise<void>;
 
   getLegislationLinks(): Promise<LegislationLink[]>;
   createLegislationLink(link: InsertLegislationLink): Promise<LegislationLink>;
@@ -477,6 +483,24 @@ export class DatabaseStorage implements IStorage {
 
   async deletePositionHistory(id: string): Promise<void> {
     await db.delete(positionHistory).where(eq(positionHistory.id, id));
+  }
+
+  async getPersonalDevelopmentByUser(userId: string): Promise<PersonalDevelopment[]> {
+    return db.select().from(personalDevelopment).where(eq(personalDevelopment.userId, userId)).orderBy(desc(personalDevelopment.startDate));
+  }
+
+  async createPersonalDevelopment(entry: InsertPersonalDevelopment): Promise<PersonalDevelopment> {
+    const [created] = await db.insert(personalDevelopment).values(entry).returning();
+    return created;
+  }
+
+  async updatePersonalDevelopment(id: string, data: Partial<InsertPersonalDevelopment>): Promise<PersonalDevelopment> {
+    const [updated] = await db.update(personalDevelopment).set(data).where(eq(personalDevelopment.id, id)).returning();
+    return updated;
+  }
+
+  async deletePersonalDevelopment(id: string): Promise<void> {
+    await db.delete(personalDevelopment).where(eq(personalDevelopment.id, id));
   }
 
   async getLegislationLinks(): Promise<LegislationLink[]> {

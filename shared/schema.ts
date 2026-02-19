@@ -126,6 +126,15 @@ export const positionHistory = pgTable("position_history", {
   notes: text("notes"),
 });
 
+export const personalDevelopment = pgTable("personal_development", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  trainingName: text("training_name").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  completed: boolean("completed").notNull().default(false),
+});
+
 export const legislationLinks = pgTable("legislation_links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -146,6 +155,7 @@ export const insertMessageSchema = createInsertSchema(messages).omit({ id: true,
 export const insertAoProcedureSchema = createInsertSchema(aoProcedures).omit({ id: true });
 export const insertAoInstructionSchema = createInsertSchema(aoInstructions).omit({ id: true });
 export const insertPositionHistorySchema = createInsertSchema(positionHistory).omit({ id: true });
+export const insertPersonalDevelopmentSchema = createInsertSchema(personalDevelopment).omit({ id: true });
 export const insertLegislationLinkSchema = createInsertSchema(legislationLinks).omit({ id: true });
 
 export const loginSchema = z.object({
@@ -177,5 +187,7 @@ export type InsertAoInstruction = z.infer<typeof insertAoInstructionSchema>;
 export type AoInstruction = typeof aoInstructions.$inferSelect;
 export type InsertPositionHistory = z.infer<typeof insertPositionHistorySchema>;
 export type PositionHistory = typeof positionHistory.$inferSelect;
+export type InsertPersonalDevelopment = z.infer<typeof insertPersonalDevelopmentSchema>;
+export type PersonalDevelopment = typeof personalDevelopment.$inferSelect;
 export type InsertLegislationLink = z.infer<typeof insertLegislationLinkSchema>;
 export type LegislationLink = typeof legislationLinks.$inferSelect;

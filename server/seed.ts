@@ -262,5 +262,22 @@ export async function seedDatabase() {
 
   await storage.createPositionHistory({ userId: emp3.id, functionTitle: "Junior IT Developer", startDate: "2024-11-01", endDate: null, salary: 2600, notes: "Nieuwe medewerker" });
 
+  // Personal Development - Opleidingen & Trainingen
+  await storage.createPersonalDevelopment({ userId: admin.id, trainingName: "ITIL Foundation", startDate: "2019-01-15", endDate: "2019-03-20", completed: true });
+  await storage.createPersonalDevelopment({ userId: admin.id, trainingName: "Azure Cloud Certificering", startDate: "2021-06-01", endDate: "2021-09-15", completed: true });
+  await storage.createPersonalDevelopment({ userId: admin.id, trainingName: "Leiderschapstraining", startDate: "2025-09-01", endDate: null, completed: false });
+
+  await storage.createPersonalDevelopment({ userId: manager.id, trainingName: "HR Management Opleiding", startDate: "2020-02-01", endDate: "2020-06-30", completed: true });
+  await storage.createPersonalDevelopment({ userId: manager.id, trainingName: "Arbeidsrecht Cursus", startDate: "2022-09-01", endDate: "2022-12-15", completed: true });
+
+  await storage.createPersonalDevelopment({ userId: emp1.id, trainingName: "Google Analytics Certificaat", startDate: "2021-04-01", endDate: "2021-06-30", completed: true });
+  await storage.createPersonalDevelopment({ userId: emp1.id, trainingName: "Content Marketing Strategie", startDate: "2023-09-01", endDate: "2024-01-15", completed: true });
+  await storage.createPersonalDevelopment({ userId: emp1.id, trainingName: "SEO Specialisatie", startDate: "2025-03-01", endDate: null, completed: false });
+
+  await storage.createPersonalDevelopment({ userId: emp2.id, trainingName: "Boekhoudkundig Medewerker", startDate: "2021-01-10", endDate: "2021-07-20", completed: true });
+  await storage.createPersonalDevelopment({ userId: emp2.id, trainingName: "Excel Gevorderd", startDate: "2023-03-01", endDate: "2023-04-15", completed: true });
+
+  await storage.createPersonalDevelopment({ userId: emp3.id, trainingName: "React & TypeScript Bootcamp", startDate: "2025-01-06", endDate: "2025-03-28", completed: false });
+
   console.log("Database seeded successfully with sample data");
 }

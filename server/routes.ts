@@ -12,7 +12,8 @@ import {
   insertUserSchema, insertEventSchema, insertAnnouncementSchema,
   insertDepartmentSchema, insertAbsenceSchema, insertRewardSchema,
   insertApplicationSchema, insertAppAccessSchema, insertMessageSchema,
-  insertAoProcedureSchema, insertAoInstructionSchema, insertPositionHistorySchema, insertLegislationLinkSchema,
+  insertAoProcedureSchema, insertAoInstructionSchema, insertPositionHistorySchema,
+  insertPersonalDevelopmentSchema, insertLegislationLinkSchema,
 } from "@shared/schema";
 
 const PgStore = pgSession(session);
@@ -528,6 +529,48 @@ export async function registerRoutes(
 
   app.delete("/api/position-history/:id", requireAdmin, async (req, res) => {
     await storage.deletePositionHistory(req.params.id);
+    res.json({ message: "Verwijderd" });
+  });
+
+  // Personal Development
+  app.get("/api/personal-development/mine", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const entries = await storage.getPersonalDevelopmentByUser(userId);
+    res.json(entries);
+  });
+
+  app.get("/api/personal-development/user/:userId", requireAuth, async (req, res) => {
+    const currentUserId = (req.session as any).userId;
+    const currentUser = await storage.getUser(currentUserId);
+    if (!currentUser) return res.status(401).json({ message: "Niet ingelogd" });
+    if (currentUser.role !== "admin" && currentUserId !== req.params.userId) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    const entries = await storage.getPersonalDevelopmentByUser(req.params.userId);
+    res.json(entries);
+  });
+
+  app.post("/api/personal-development", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertPersonalDevelopmentSchema.parse(req.body);
+      const entry = await storage.createPersonalDevelopment(parsed);
+      res.json(entry);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Validatiefout" });
+    }
+  });
+
+  app.patch("/api/personal-development/:id", requireAdmin, async (req, res) => {
+    try {
+      const entry = await storage.updatePersonalDevelopment(req.params.id, req.body);
+      res.json(entry);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Bijwerken mislukt" });
+    }
+  });
+
+  app.delete("/api/personal-development/:id", requireAdmin, async (req, res) => {
+    await storage.deletePersonalDevelopment(req.params.id);
     res.json({ message: "Verwijderd" });
   });
 
