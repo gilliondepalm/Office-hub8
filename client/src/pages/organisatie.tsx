@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/accordion";
 import {
   Plus, Building2, Users, Trash2, FileText, ExternalLink,
-  BookOpen, Network, Scale, ChevronRight, ClipboardList,
+  BookOpen, Network, Scale, ChevronRight, ClipboardList, Pencil,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -58,6 +58,7 @@ const legislationFormSchema = z.object({
 
 function AfdelingenTab() {
   const [open, setOpen] = useState(false);
+  const [editDept, setEditDept] = useState<Department | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -102,6 +103,33 @@ function AfdelingenTab() {
       toast({ title: "Afdeling verwijderd" });
     },
   });
+
+  const editForm = useForm<z.infer<typeof departmentFormSchema>>({
+    resolver: zodResolver(departmentFormSchema),
+    defaultValues: { name: "", description: "" },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof departmentFormSchema> & { id: string }) => {
+      await apiRequest("PATCH", `/api/departments/${data.id}`, {
+        name: data.name,
+        description: data.description || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      toast({ title: "Afdeling bijgewerkt" });
+      setEditDept(null);
+    },
+    onError: () => {
+      toast({ title: "Fout bij bijwerken", variant: "destructive" });
+    },
+  });
+
+  const openEdit = (dept: Department) => {
+    editForm.reset({ name: dept.name, description: dept.description || "" });
+    setEditDept(dept);
+  };
 
   const getMemberCount = (deptName: string) => {
     return users?.filter((u) => u.department === deptName).length || 0;
@@ -192,9 +220,14 @@ function AfdelingenTab() {
                       </div>
                     </div>
                     {user?.role === "admin" && (
-                      <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(dept.id)} data-testid={`button-delete-department-${dept.id}`}>
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(dept)} data-testid={`button-edit-department-${dept.id}`}>
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(dept.id)} data-testid={`button-delete-department-${dept.id}`}>
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                   {dept.description && (
@@ -211,6 +244,35 @@ function AfdelingenTab() {
           })}
         </div>
       )}
+
+      <Dialog open={!!editDept} onOpenChange={(v) => { if (!v) setEditDept(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Afdeling Bewerken</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit((d) => editDept && editMutation.mutate({ ...d, id: editDept.id }))} className="space-y-4">
+              <FormField control={editForm.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Naam</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-edit-department-name" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={editForm.control} name="description" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Beschrijving</FormLabel>
+                  <FormControl><Textarea {...field} data-testid="input-edit-department-description" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <Button type="submit" className="w-full" disabled={editMutation.isPending} data-testid="button-submit-edit-department">
+                {editMutation.isPending ? "Opslaan..." : "Wijzigingen Opslaan"}
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -558,7 +620,10 @@ function OrganogramTab() {
             <h3 className="font-semibold" data-testid="text-organogram-directie">Directie / Beheer</h3>
             <div className="mt-2 space-y-1">
               {directionTeam.map((u) => (
-                <p key={u.id} className="text-sm text-muted-foreground">{u.fullName} <Badge variant="secondary" className="ml-1 text-xs">{u.role}</Badge></p>
+                <div key={u.id} className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+                  <span>{u.fullName}</span>
+                  <Badge variant="secondary" className="text-xs">{u.role}</Badge>
+                </div>
               ))}
             </div>
           </CardContent>
