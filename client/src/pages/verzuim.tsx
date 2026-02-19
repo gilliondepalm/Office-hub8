@@ -396,7 +396,19 @@ export default function VerzuimPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {[...absences].sort((a, b) => ((a as any).userName || "").localeCompare((b as any).userName || "", "nl")).map((absence) => {
+                      {(() => {
+                        const sorted = [...absences].sort((a, b) => ((a as any).userName || "").localeCompare((b as any).userName || "", "nl"));
+                        const colCount = isAdminOrManager ? 6 : 5;
+                        const depts = Array.from(new Set(sorted.map(a => (a as any).userDepartment || "Geen afdeling"))).sort((a, b) => a.localeCompare(b, "nl"));
+                        return depts.map(dept => (
+                          <>{isAdminOrManager && (
+                            <TableRow key={`dept-${dept}`}>
+                              <TableCell colSpan={colCount} className="bg-muted/50 font-semibold text-xs text-muted-foreground py-2">
+                                {dept}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          {sorted.filter(a => ((a as any).userDepartment || "Geen afdeling") === dept).map((absence) => {
                         const sc = statusConfig[absence.status] || statusConfig.pending;
                         const StatusIcon = sc.icon;
                         const displayReason = absence.type === "bvvd" && absence.bvvdReason
@@ -404,7 +416,7 @@ export default function VerzuimPage() {
                           : absence.reason || "-";
                         return (
                           <TableRow key={absence.id} data-testid={`row-absence-${absence.id}`}>
-                            <TableCell className="font-medium text-sm">
+                            <TableCell className={`font-medium text-sm ${isAdminOrManager ? "pl-6" : ""}`}>
                               {(absence as any).userName || "Medewerker"}
                             </TableCell>
                             <TableCell>
@@ -456,6 +468,9 @@ export default function VerzuimPage() {
                           </TableRow>
                         );
                       })}
+                      </>
+                        ));
+                      })()}
                     </TableBody>
                   </Table>
                 </div>
