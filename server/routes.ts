@@ -315,7 +315,7 @@ export async function registerRoutes(
           totalDays: total,
           usedDays,
           pendingDays,
-          remainingDays: total - usedDays,
+          remainingDays: total - usedDays - pendingDays,
         };
       });
       res.json(balances);
