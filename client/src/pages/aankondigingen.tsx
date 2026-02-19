@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +19,7 @@ import {
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
-import { Plus, Megaphone, Pin, Trash2, AlertCircle, Pencil } from "lucide-react";
+import { Plus, Megaphone, Pin, Trash2, AlertCircle, Pencil, FileText, Upload, X } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -45,6 +45,12 @@ function AnnouncementFormDialog({
 }) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfRemoved, setPdfRemoved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const existingPdf = !pdfRemoved && !pdfFile ? (editAnn?.pdfUrl || null) : null;
 
   const form = useForm<z.infer<typeof announcementFormSchema>>({
     resolver: zodResolver(announcementFormSchema),
@@ -58,11 +64,32 @@ function AnnouncementFormDialog({
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof announcementFormSchema>) => {
+      let pdfUrl: string | null = existingPdf;
+
+      if (pdfFile) {
+        setUploading(true);
+        const formData = new FormData();
+        formData.append("pdf", pdfFile);
+        const uploadRes = await fetch("/api/upload/pdf", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        if (!uploadRes.ok) {
+          throw new Error("PDF upload mislukt");
+        }
+        const uploadData = await uploadRes.json();
+        pdfUrl = uploadData.pdfUrl;
+        setUploading(false);
+      }
+
+      const payload = { ...data, pdfUrl };
+
       if (editAnn) {
-        await apiRequest("PATCH", `/api/announcements/${editAnn.id}`, data);
+        await apiRequest("PATCH", `/api/announcements/${editAnn.id}`, payload);
       } else {
         await apiRequest("POST", "/api/announcements", {
-          ...data,
+          ...payload,
           createdBy: user?.id || null,
         });
       }
@@ -72,14 +99,47 @@ function AnnouncementFormDialog({
       toast({ title: editAnn ? "Aankondiging bijgewerkt" : "Aankondiging geplaatst" });
       onOpenChange(false);
       form.reset();
+      setPdfFile(null);
+      setPdfRemoved(false);
     },
     onError: () => {
+      setUploading(false);
       toast({ title: "Fout bij opslaan", variant: "destructive" });
     },
   });
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== "application/pdf") {
+        toast({ title: "Alleen PDF-bestanden zijn toegestaan", variant: "destructive" });
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: "Bestand is te groot (max 10 MB)", variant: "destructive" });
+        return;
+      }
+      setPdfFile(file);
+      setPdfRemoved(false);
+    }
+  };
+
+  const removePdf = () => {
+    setPdfFile(null);
+    setPdfRemoved(true);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => {
+      if (!o) {
+        setPdfFile(null);
+        setPdfRemoved(false);
+      }
+      onOpenChange(o);
+    }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{editAnn ? "Aankondiging Bewerken" : "Nieuwe Aankondiging"}</DialogTitle>
@@ -125,8 +185,50 @@ function AnnouncementFormDialog({
                 </FormControl>
               </FormItem>
             )} />
-            <Button type="submit" className="w-full" disabled={mutation.isPending} data-testid="button-submit-announcement">
-              {mutation.isPending ? "Opslaan..." : editAnn ? "Bijwerken" : "Aankondiging Plaatsen"}
+
+            <div>
+              <p className="text-sm font-medium mb-2">PDF-bijlage</p>
+              {pdfFile ? (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-muted">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm truncate flex-1">{pdfFile.name}</span>
+                  <Button type="button" size="icon" variant="ghost" onClick={removePdf} data-testid="button-remove-pdf">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : existingPdf ? (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-muted">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm truncate flex-1">Bestaand PDF-bestand</span>
+                  <Button type="button" size="icon" variant="ghost" onClick={removePdf} data-testid="button-remove-pdf">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="button-upload-pdf"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  PDF uploaden
+                </Button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                className="hidden"
+                onChange={handleFileChange}
+                data-testid="input-pdf-file"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Max 10 MB, alleen PDF-bestanden</p>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={mutation.isPending || uploading} data-testid="button-submit-announcement">
+              {uploading ? "PDF uploaden..." : mutation.isPending ? "Opslaan..." : editAnn ? "Bijwerken" : "Aankondiging Plaatsen"}
             </Button>
           </form>
         </Form>
@@ -186,7 +288,9 @@ export default function AankondigingenPage() {
       </div>
 
       <AnnouncementFormDialog open={createOpen} onOpenChange={setCreateOpen} />
-      <AnnouncementFormDialog open={!!editAnn} onOpenChange={(open) => { if (!open) setEditAnn(null); }} editAnn={editAnn} />
+      {editAnn && (
+        <AnnouncementFormDialog open={!!editAnn} onOpenChange={(open) => { if (!open) setEditAnn(null); }} editAnn={editAnn} />
+      )}
 
       {sorted.length === 0 ? (
         <Card>
@@ -223,6 +327,18 @@ export default function AankondigingenPage() {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{ann.content}</p>
+                    {ann.pdfUrl && (
+                      <a
+                        href={ann.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 mt-2 text-sm text-primary hover:underline"
+                        data-testid={`link-pdf-${ann.id}`}
+                      >
+                        <FileText className="h-4 w-4" />
+                        PDF-bijlage bekijken
+                      </a>
+                    )}
                     <p className="text-xs text-muted-foreground mt-2">
                       {format(new Date(ann.createdAt), "d MMMM yyyy 'om' HH:mm", { locale: nl })}
                     </p>

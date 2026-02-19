@@ -5,6 +5,9 @@ import { storage } from "./storage";
 import { seedDatabase } from "./seed";
 import bcrypt from "bcryptjs";
 import pgSession from "connect-pg-simple";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import {
   insertUserSchema, insertEventSchema, insertAnnouncementSchema,
   insertDepartmentSchema, insertAbsenceSchema, insertRewardSchema,
@@ -12,6 +15,31 @@ import {
 } from "@shared/schema";
 
 const PgStore = pgSession(session);
+
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const pdfStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_"));
+  },
+});
+
+const uploadPdf = multer({
+  storage: pdfStorage,
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Alleen PDF-bestanden zijn toegestaan"));
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -48,6 +76,17 @@ export async function registerRoutes(
     }
     next();
   }
+
+  const express = await import("express");
+  app.use("/uploads", requireAuth, express.default.static(uploadsDir));
+
+  app.post("/api/upload/pdf", requireAuth, uploadPdf.single("pdf"), (req: any, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "Geen PDF-bestand ontvangen" });
+    }
+    const pdfUrl = `/uploads/${req.file.filename}`;
+    res.json({ pdfUrl });
+  });
 
   app.post("/api/auth/login", async (req, res) => {
     try {
