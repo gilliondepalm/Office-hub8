@@ -62,10 +62,16 @@ export async function registerRoutes(
 
   await seedDatabase();
 
-  function requireAuth(req: any, res: any, next: any) {
-    if (!(req.session as any).userId) {
+  async function requireAuth(req: any, res: any, next: any) {
+    const userId = (req.session as any).userId;
+    if (!userId) {
       return res.status(401).json({ message: "Niet ingelogd" });
     }
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(401).json({ message: "Niet ingelogd" });
+    }
+    req.user = user;
     next();
   }
 
