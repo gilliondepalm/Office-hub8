@@ -780,7 +780,7 @@ function CaoInfoTab() {
             </p>
           </div>
 
-          <Accordion type="multiple" className="w-full">
+          <Accordion type="multiple" className="w-full grid grid-cols-2 gap-x-6">
             {chapters.map((ch) => {
               const docs = getDocsForChapter(ch.number);
               return (
