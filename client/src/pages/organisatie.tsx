@@ -682,6 +682,20 @@ function OrganogramTab() {
 }
 
 function CaoInfoTab() {
+  const chapters = [
+    { number: "I", title: "Algemeen" },
+    { number: "II", title: "Begin en einde dienstverband" },
+    { number: "III", title: "Arbeidstijd" },
+    { number: "IV", title: "Loonbepalingen" },
+    { number: "V", title: "Vakantie, vakantietoeslag en buitengewoon verlof" },
+    { number: "VI", title: "Bepalingen en voorzieningen m.b.t. ziekte en bedrijfsongeval" },
+    { number: "VII", title: "Voorzieningen bij overlijden" },
+    { number: "VIII", title: "Ouderdomsvoorziening" },
+    { number: "IX", title: "Diverse bepalingen" },
+    { number: "X", title: "Regeling werken met computerbeeldschermen" },
+    { number: "XI", title: "Slotbepalingen" },
+  ];
+
   return (
     <div className="space-y-4">
       <Card>
@@ -695,54 +709,19 @@ function CaoInfoTab() {
           <div>
             <h4 className="font-medium text-sm mb-1" data-testid="text-cao-title">Collectieve Arbeidsovereenkomst</h4>
             <p className="text-sm text-muted-foreground">
-              De CAO regelt de arbeidsvoorwaarden voor alle medewerkers. Hieronder vindt u de belangrijkste punten uit de geldende CAO.
+              De CAO regelt de arbeidsvoorwaarden voor alle medewerkers. Hieronder vindt u de hoofdstukindeling van de geldende CAO.
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
-              <CardContent className="p-4">
-                <h5 className="font-medium text-sm mb-2">Werktijden</h5>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Standaard werkweek: 36-40 uur</li>
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Kantooruren: 08:00 - 18:00</li>
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Flexibele werktijden mogelijk in overleg</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <h5 className="font-medium text-sm mb-2">Verlof</h5>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Wettelijk verlof: 20 dagen per jaar</li>
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Bovenwettelijk verlof: 5 extra dagen</li>
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Bijzonder verlof conform wettelijke regeling</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <h5 className="font-medium text-sm mb-2">Salaris & Toeslagen</h5>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Jaarlijkse salarisverhoging conform CAO-tabel</li>
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Vakantietoeslag: 8% in mei</li>
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Eindejaarsuitkering: conform CAO</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <h5 className="font-medium text-sm mb-2">Pensioen & Verzekeringen</h5>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Pensioenopbouw via bedrijfspensioenfonds</li>
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> Collectieve zorgverzekering beschikbaar</li>
-                  <li className="flex items-start gap-2"><ChevronRight className="h-3 w-3 mt-1 shrink-0" /> WIA-aanvullingsverzekering</li>
-                </ul>
-              </CardContent>
-            </Card>
+          <div className="space-y-2">
+            {chapters.map((ch) => (
+              <div key={ch.number} className="flex items-center gap-3 p-3 rounded-md border hover:bg-muted/50 transition-colors" data-testid={`cao-chapter-${ch.number}`}>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  {ch.number}
+                </div>
+                <span className="text-sm font-medium">{ch.title}</span>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
