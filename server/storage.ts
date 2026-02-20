@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import {
   users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
-  aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks,
+  aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks, caoDocuments,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -17,6 +17,7 @@ import {
   type PositionHistory, type InsertPositionHistory,
   type PersonalDevelopment, type InsertPersonalDevelopment,
   type LegislationLink, type InsertLegislationLink,
+  type CaoDocument, type InsertCaoDocument,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -100,6 +101,10 @@ export interface IStorage {
   getLegislationLinks(): Promise<LegislationLink[]>;
   createLegislationLink(link: InsertLegislationLink): Promise<LegislationLink>;
   deleteLegislationLink(id: string): Promise<void>;
+
+  getCaoDocuments(): Promise<CaoDocument[]>;
+  createCaoDocument(doc: InsertCaoDocument): Promise<CaoDocument>;
+  deleteCaoDocument(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -547,6 +552,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLegislationLink(id: string): Promise<void> {
     await db.delete(legislationLinks).where(eq(legislationLinks.id, id));
+  }
+
+  async getCaoDocuments(): Promise<CaoDocument[]> {
+    return db.select().from(caoDocuments);
+  }
+
+  async createCaoDocument(doc: InsertCaoDocument): Promise<CaoDocument> {
+    const [created] = await db.insert(caoDocuments).values(doc).returning();
+    return created;
+  }
+
+  async deleteCaoDocument(id: string): Promise<void> {
+    await db.delete(caoDocuments).where(eq(caoDocuments.id, id));
   }
 }
 

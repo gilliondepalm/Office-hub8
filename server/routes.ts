@@ -13,7 +13,7 @@ import {
   insertDepartmentSchema, insertAbsenceSchema, insertRewardSchema,
   insertApplicationSchema, insertAppAccessSchema, insertMessageSchema,
   insertAoProcedureSchema, insertAoInstructionSchema, insertPositionHistorySchema,
-  insertPersonalDevelopmentSchema, insertLegislationLinkSchema,
+  insertPersonalDevelopmentSchema, insertLegislationLinkSchema, insertCaoDocumentSchema,
 } from "@shared/schema";
 
 const PgStore = pgSession(session);
@@ -744,6 +744,31 @@ export async function registerRoutes(
 
   app.delete("/api/legislation/:id", requireAdmin, async (req, res) => {
     await storage.deleteLegislationLink(req.params.id);
+    res.json({ message: "Verwijderd" });
+  });
+
+  app.get("/api/cao-documents", requireAuth, async (_req, res) => {
+    const all = await storage.getCaoDocuments();
+    res.json(all);
+  });
+
+  app.post("/api/cao-documents", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Alleen beheerders" });
+      }
+      const parsed = insertCaoDocumentSchema.parse(req.body);
+      const doc = await storage.createCaoDocument(parsed);
+      res.json(doc);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Validatiefout" });
+    }
+  });
+
+  app.delete("/api/cao-documents/:id", requireAdmin, async (req, res) => {
+    await storage.deleteCaoDocument(req.params.id);
     res.json({ message: "Verwijderd" });
   });
 

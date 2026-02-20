@@ -147,6 +147,13 @@ export const legislationLinks = pgTable("legislation_links", {
   category: text("category").notNull().default("algemeen"),
 });
 
+export const caoDocuments = pgTable("cao_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  chapterNumber: text("chapter_number").notNull(),
+  title: text("title").notNull(),
+  documentUrl: text("document_url").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertEventSchema = createInsertSchema(events).omit({ id: true });
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, createdAt: true });
@@ -161,6 +168,7 @@ export const insertAoInstructionSchema = createInsertSchema(aoInstructions).omit
 export const insertPositionHistorySchema = createInsertSchema(positionHistory).omit({ id: true });
 export const insertPersonalDevelopmentSchema = createInsertSchema(personalDevelopment).omit({ id: true });
 export const insertLegislationLinkSchema = createInsertSchema(legislationLinks).omit({ id: true });
+export const insertCaoDocumentSchema = createInsertSchema(caoDocuments).omit({ id: true });
 
 export const loginSchema = z.object({
   username: z.string().min(1, "Gebruikersnaam is verplicht"),
@@ -195,3 +203,5 @@ export type InsertPersonalDevelopment = z.infer<typeof insertPersonalDevelopment
 export type PersonalDevelopment = typeof personalDevelopment.$inferSelect;
 export type InsertLegislationLink = z.infer<typeof insertLegislationLinkSchema>;
 export type LegislationLink = typeof legislationLinks.$inferSelect;
+export type InsertCaoDocument = z.infer<typeof insertCaoDocumentSchema>;
+export type CaoDocument = typeof caoDocuments.$inferSelect;
