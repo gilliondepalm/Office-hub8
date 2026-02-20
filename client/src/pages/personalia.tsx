@@ -772,6 +772,118 @@ function PersonalDevelopmentDialog({
   );
 }
 
+function InlinePositionHistory({ user }: { user: User }) {
+  const { data: history, isLoading } = useQuery<PositionHistory[]>({
+    queryKey: ["/api/position-history/user", user.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/position-history/user/${user.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Fout bij ophalen");
+      return res.json();
+    },
+  });
+
+  return (
+    <Card className="h-full">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Briefcase className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-sm">Functie & Salarisontwikkeling</h3>
+          <Badge variant="secondary" className="ml-auto text-xs">{history?.length || 0}</Badge>
+        </div>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => <Skeleton key={i} className="h-16" />)}
+          </div>
+        ) : !history?.length ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">Geen functiehistorie beschikbaar</p>
+        ) : (
+          <div className="space-y-2">
+            {history.map((entry, idx) => (
+              <div key={entry.id} className={`p-3 rounded-md ${idx === 0 ? "bg-primary/5" : "hover-elevate"}`} data-testid={`inline-position-${entry.id}`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium">{entry.functionTitle}</p>
+                  {!entry.endDate && <Badge variant="default" className="text-xs">Huidig</Badge>}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <CalendarDays className="h-3 w-3 inline mr-1" />
+                  {format(new Date(entry.startDate + "T00:00:00"), "d MMM yyyy", { locale: nl })}
+                  {" - "}
+                  {entry.endDate
+                    ? format(new Date(entry.endDate + "T00:00:00"), "d MMM yyyy", { locale: nl })
+                    : "heden"}
+                </p>
+                {entry.salary && (
+                  <p className="text-xs font-medium mt-1 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-muted-foreground" />
+                    {new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(entry.salary)} /mnd
+                  </p>
+                )}
+                {entry.notes && <p className="text-xs text-muted-foreground mt-1">{entry.notes}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function InlinePersonalDevelopment({ user }: { user: User }) {
+  const { data: devEntries, isLoading } = useQuery<PersonalDevelopment[]>({
+    queryKey: ["/api/personal-development/user", user.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/personal-development/user/${user.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Fout bij laden");
+      return res.json();
+    },
+  });
+
+  return (
+    <Card className="h-full">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <GraduationCap className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-sm">Persoonlijke Ontwikkeling</h3>
+          <Badge variant="secondary" className="ml-auto text-xs">{devEntries?.length || 0}</Badge>
+        </div>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => <Skeleton key={i} className="h-16" />)}
+          </div>
+        ) : !devEntries?.length ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">Geen opleidingen/trainingen beschikbaar</p>
+        ) : (
+          <div className="space-y-2">
+            {devEntries.map((entry) => (
+              <div key={entry.id} className="p-3 rounded-md hover-elevate" data-testid={`inline-dev-${entry.id}`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {entry.completed ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <p className="text-sm font-medium">{entry.trainingName}</p>
+                  <Badge variant={entry.completed ? "default" : "outline"} className="text-xs">
+                    {entry.completed ? "Afgerond" : "Lopend"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <CalendarDays className="h-3 w-3 inline mr-1" />
+                  {format(new Date(entry.startDate + "T00:00:00"), "d MMM yyyy", { locale: nl })}
+                  {" - "}
+                  {entry.endDate
+                    ? format(new Date(entry.endDate + "T00:00:00"), "d MMM yyyy", { locale: nl })
+                    : "heden"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PersonaliaPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -1038,6 +1150,12 @@ export default function PersonaliaPage() {
 
           return (
             <div className="space-y-6">
+              {currentUser?.role !== "admin" && currentUser && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <InlinePositionHistory user={currentUser as User} />
+                  <InlinePersonalDevelopment user={currentUser as User} />
+                </div>
+              )}
               {sortedDeptNames.map((deptName) => (
                 <div key={deptName}>
                   <div className="flex items-center gap-2 mb-3">
