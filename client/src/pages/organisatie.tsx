@@ -359,7 +359,11 @@ function AoProceduresTab() {
     },
   });
 
-  const groupedByDept = procedures?.reduce((acc, proc) => {
+  const filteredProcedures = isAdmin
+    ? procedures
+    : procedures?.filter((proc) => proc.departmentName === user?.department);
+
+  const groupedByDept = filteredProcedures?.reduce((acc, proc) => {
     const key = proc.departmentName || "Onbekend";
     if (!acc[key]) acc[key] = [];
     acc[key].push(proc);
