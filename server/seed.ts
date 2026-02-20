@@ -89,6 +89,81 @@ export async function seedDatabase() {
     birthDate: "1995-12-30",
   });
 
+  const emp4 = await storage.createUser({
+    username: "lisa",
+    password: hashedUser,
+    fullName: "Lisa Vermeer",
+    email: "lisa.vermeer@kantoor.nl",
+    role: "employee",
+    department: "Algemene Zaken",
+    avatar: null,
+    active: true,
+    permissions: EMPLOYEE_MODULES,
+    startDate: "2022-04-01",
+    endDate: null,
+    birthDate: "1993-06-18",
+  });
+
+  const emp5 = await storage.createUser({
+    username: "kevin",
+    password: hashedUser,
+    fullName: "Kevin de Groot",
+    email: "kevin.degroot@kantoor.nl",
+    role: "employee",
+    department: "ICT & Beheer",
+    avatar: null,
+    active: true,
+    permissions: EMPLOYEE_MODULES,
+    startDate: "2023-02-15",
+    endDate: null,
+    birthDate: "1991-09-25",
+  });
+
+  const emp6 = await storage.createUser({
+    username: "annemarie",
+    password: hashedUser,
+    fullName: "Anne-Marie Willems",
+    email: "annemarie.willems@kantoor.nl",
+    role: "employee",
+    department: "Kadastrale Metingen",
+    avatar: null,
+    active: true,
+    permissions: EMPLOYEE_MODULES,
+    startDate: "2021-08-01",
+    endDate: null,
+    birthDate: "1988-12-03",
+  });
+
+  const emp7 = await storage.createUser({
+    username: "ricardo",
+    password: hashedUser,
+    fullName: "Ricardo Martis",
+    email: "ricardo.martis@kantoor.nl",
+    role: "employee",
+    department: "Openbare Registers & Info",
+    avatar: null,
+    active: true,
+    permissions: EMPLOYEE_MODULES,
+    startDate: "2020-11-15",
+    endDate: null,
+    birthDate: "1994-02-14",
+  });
+
+  const manager2 = await storage.createUser({
+    username: "diana",
+    password: hashedUser,
+    fullName: "Diana Petronia",
+    email: "diana.petronia@kantoor.nl",
+    role: "manager",
+    department: "Kadastrale Metingen",
+    avatar: null,
+    active: true,
+    permissions: MANAGER_MODULES,
+    startDate: "2019-05-01",
+    endDate: null,
+    birthDate: "1986-08-22",
+  });
+
   await storage.createDepartment({ name: "IT", description: "Informatie technologie en systeembeheer", managerId: admin.id });
   await storage.createDepartment({ name: "HR", description: "Human Resources en personeelszaken", managerId: manager.id });
   await storage.createDepartment({ name: "Marketing", description: "Marketing en communicatie", managerId: null });
@@ -278,6 +353,33 @@ export async function seedDatabase() {
   await storage.createPersonalDevelopment({ userId: emp2.id, trainingName: "Excel Gevorderd", startDate: "2023-03-01", endDate: "2023-04-15", completed: true });
 
   await storage.createPersonalDevelopment({ userId: emp3.id, trainingName: "React & TypeScript Bootcamp", startDate: "2025-01-06", endDate: "2025-03-28", completed: false });
+
+  // Extra medewerkers - Position History
+  await storage.createPositionHistory({ userId: emp4.id, functionTitle: "Administratief Medewerker", startDate: "2022-04-01", endDate: null, salary: 2700, notes: "Startfunctie Algemene Zaken" });
+  await storage.createPositionHistory({ userId: emp5.id, functionTitle: "ICT Medewerker", startDate: "2023-02-15", endDate: null, salary: 3000, notes: "Startfunctie ICT" });
+  await storage.createPositionHistory({ userId: emp6.id, functionTitle: "Landmeter Assistent", startDate: "2021-08-01", endDate: "2024-01-31", salary: 2800, notes: "Startfunctie" });
+  await storage.createPositionHistory({ userId: emp6.id, functionTitle: "Landmeter", startDate: "2024-02-01", endDate: null, salary: 3400, notes: "Promotie" });
+  await storage.createPositionHistory({ userId: emp7.id, functionTitle: "Registratie Medewerker", startDate: "2020-11-15", endDate: null, salary: 2900, notes: "Startfunctie Openbare Registers" });
+  await storage.createPositionHistory({ userId: manager2.id, functionTitle: "Senior Landmeter", startDate: "2019-05-01", endDate: "2022-12-31", salary: 3500, notes: "Startfunctie" });
+  await storage.createPositionHistory({ userId: manager2.id, functionTitle: "Hoofd Kadastrale Metingen", startDate: "2023-01-01", endDate: null, salary: 4200, notes: "Promotie naar leidinggevende" });
+
+  // Extra medewerkers - Personal Development
+  await storage.createPersonalDevelopment({ userId: emp4.id, trainingName: "Administratieve Organisatie", startDate: "2022-09-01", endDate: "2023-01-15", completed: true });
+  await storage.createPersonalDevelopment({ userId: emp4.id, trainingName: "Klantcommunicatie", startDate: "2025-06-01", endDate: null, completed: false });
+  await storage.createPersonalDevelopment({ userId: emp5.id, trainingName: "Cisco Netwerk Certificering", startDate: "2023-09-01", endDate: "2024-02-28", completed: true });
+  await storage.createPersonalDevelopment({ userId: emp5.id, trainingName: "Cloud Infrastructure", startDate: "2025-11-01", endDate: null, completed: false });
+  await storage.createPersonalDevelopment({ userId: emp6.id, trainingName: "GIS Specialist Opleiding", startDate: "2022-01-10", endDate: "2022-07-20", completed: true });
+  await storage.createPersonalDevelopment({ userId: emp6.id, trainingName: "Drone Surveying Certificaat", startDate: "2025-04-01", endDate: null, completed: false });
+  await storage.createPersonalDevelopment({ userId: emp7.id, trainingName: "Kadastrale Wetgeving", startDate: "2021-03-01", endDate: "2021-08-30", completed: true });
+  await storage.createPersonalDevelopment({ userId: manager2.id, trainingName: "Leiderschapstraining", startDate: "2022-06-01", endDate: "2022-09-30", completed: true });
+  await storage.createPersonalDevelopment({ userId: manager2.id, trainingName: "Projectmanagement PRINCE2", startDate: "2023-09-01", endDate: "2024-01-15", completed: true });
+
+  // Extra medewerkers - Absences
+  await storage.createAbsence({ userId: emp4.id, type: "vacation", startDate: "2026-03-10", endDate: "2026-03-14", reason: "Familiebezoek", status: "pending", approvedBy: null });
+  await storage.createAbsence({ userId: emp5.id, type: "sick", startDate: "2026-02-18", endDate: "2026-02-20", reason: "Verkoudheid", status: "approved", approvedBy: manager2.id });
+  await storage.createAbsence({ userId: emp6.id, type: "vacation", startDate: "2026-04-21", endDate: "2026-05-02", reason: "Vakantie Colombia", status: "pending", approvedBy: null });
+  await storage.createAbsence({ userId: emp7.id, type: "personal", startDate: "2026-03-07", endDate: "2026-03-07", reason: "Tandartsbezoek", status: "approved", approvedBy: manager2.id });
+  await storage.createAbsence({ userId: manager2.id, type: "vacation", startDate: "2026-07-01", endDate: "2026-07-15", reason: "Zomervakantie", status: "pending", approvedBy: null });
 
   console.log("Database seeded successfully with sample data");
 }
