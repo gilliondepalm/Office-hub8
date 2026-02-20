@@ -506,10 +506,12 @@ export default function KalenderPage() {
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-kalender-title">Evenementen Kalender</h1>
         </div>
-        <Button onClick={() => { setCreateDate(""); setCreateOpen(true); }} data-testid="button-add-event">
-          <Plus className="h-4 w-4 mr-2" />
-          Nieuw Evenement
-        </Button>
+        {(user?.role === "admin" || user?.role === "manager") && (
+          <Button onClick={() => { setCreateDate(""); setCreateOpen(true); }} data-testid="button-add-event">
+            <Plus className="h-4 w-4 mr-2" />
+            Nieuw Evenement
+          </Button>
+        )}
       </div>
 
       <EventFormDialog
