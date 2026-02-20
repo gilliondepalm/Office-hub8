@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import {
   users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
-  aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks, caoDocuments,
+  aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks, caoDocuments, siteSettings,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -105,6 +105,9 @@ export interface IStorage {
   getCaoDocuments(): Promise<CaoDocument[]>;
   createCaoDocument(doc: InsertCaoDocument): Promise<CaoDocument>;
   deleteCaoDocument(id: string): Promise<void>;
+
+  getSiteSetting(key: string): Promise<string | null>;
+  setSiteSetting(key: string, value: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -565,6 +568,18 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCaoDocument(id: string): Promise<void> {
     await db.delete(caoDocuments).where(eq(caoDocuments.id, id));
+  }
+
+  async getSiteSetting(key: string): Promise<string | null> {
+    const [row] = await db.select().from(siteSettings).where(eq(siteSettings.key, key));
+    return row?.value ?? null;
+  }
+
+  async setSiteSetting(key: string, value: string): Promise<void> {
+    await db
+      .insert(siteSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } });
   }
 }
 

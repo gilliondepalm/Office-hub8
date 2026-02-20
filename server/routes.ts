@@ -43,6 +43,26 @@ const uploadPdf = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
+const imageStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_"));
+  },
+});
+
+const uploadImage = multer({
+  storage: imageStorage,
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Alleen afbeeldingen zijn toegestaan"));
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -770,6 +790,33 @@ export async function registerRoutes(
   app.delete("/api/cao-documents/:id", requireAdmin, async (req, res) => {
     await storage.deleteCaoDocument(req.params.id);
     res.json({ message: "Verwijderd" });
+  });
+
+  app.get("/api/site-settings/:key", requireAuth, async (req, res) => {
+    const allowedKeys = ["dashboard_photo"];
+    if (!allowedKeys.includes(req.params.key)) {
+      return res.status(404).json({ message: "Instelling niet gevonden" });
+    }
+    const value = await storage.getSiteSetting(req.params.key);
+    res.json({ value });
+  });
+
+  app.post("/api/site-settings/dashboard-photo", requireAuth, uploadImage.single("photo"), async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Alleen beheerders" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ message: "Geen afbeelding geüpload" });
+      }
+      const photoUrl = `/uploads/${req.file.filename}`;
+      await storage.setSiteSetting("dashboard_photo", photoUrl);
+      res.json({ value: photoUrl });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Upload mislukt" });
+    }
   });
 
   return httpServer;

@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CalendarDays,
@@ -11,11 +12,15 @@ import {
   CheckCircle,
   TrendingUp,
   ArrowRight,
+  Camera,
 } from "lucide-react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import type { Event, Announcement, Absence } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { useRef } from "react";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 function StatCard({
   title,
@@ -55,6 +60,45 @@ function StatCard({
 export default function DashboardPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const { data: dashboardPhoto } = useQuery<{ value: string | null }>({
+    queryKey: ["/api/site-settings", "dashboard_photo"],
+    queryFn: async () => {
+      const res = await fetch("/api/site-settings/dashboard_photo", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("photo", file);
+      const res = await fetch("/api/site-settings/dashboard-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Upload mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/site-settings", "dashboard_photo"] });
+      toast({ title: "Foto bijgewerkt", description: "De dashboardfoto is succesvol gewijzigd." });
+    },
+    onError: () => {
+      toast({ title: "Fout", description: "Het uploaden van de foto is mislukt.", variant: "destructive" });
+    },
+  });
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadPhotoMutation.mutate(file);
+    }
+  };
 
   const { data: stats, isLoading } = useQuery<{
     totalEmployees: number;
@@ -104,17 +148,20 @@ export default function DashboardPage() {
     );
   }
 
+  const photoSrc = dashboardPhoto?.value || "/images/dashboard-hero.jpg";
+
   return (
     <div className="overflow-auto h-full">
       <div className="relative h-52 overflow-hidden">
         <img
-          src="/images/dashboard-hero.jpg"
+          src={photoSrc}
           alt="Dashboard"
           className="absolute inset-0 w-full h-full object-cover"
+          data-testid="img-dashboard-photo"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[hsl(152,40%,18%/0.9)] via-[hsl(152,35%,22%/0.8)] to-[hsl(152,30%,25%/0.6)]" />
         <div className="relative z-10 h-full flex items-center px-8">
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1">
             <p className="text-[hsl(48,96%,53%)] font-semibold text-sm tracking-wide uppercase">{greeting()}</p>
             <h1 className="text-3xl font-bold text-white" data-testid="text-dashboard-title">
               {user?.fullName}
@@ -123,6 +170,29 @@ export default function DashboardPage() {
               Welkom bij het Kantoor Dashboard. Hier vindt u een overzicht van uw kantooromgeving.
             </p>
           </div>
+          {isAdmin && (
+            <div className="shrink-0">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoChange}
+                data-testid="input-dashboard-photo"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2 bg-white/20 text-white border-white/30 backdrop-blur-sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadPhotoMutation.isPending}
+                data-testid="button-change-photo"
+              >
+                <Camera className="h-4 w-4" />
+                {uploadPhotoMutation.isPending ? "Uploaden..." : "Foto wijzigen"}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
