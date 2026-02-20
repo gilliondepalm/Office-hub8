@@ -10,6 +10,7 @@ import {
   LogOut,
   Shield,
   UserCircle,
+  Star,
 } from "lucide-react";
 import {
   Sidebar,
@@ -34,6 +35,7 @@ const menuItems = [
   { title: "Organisatie", url: "/organisatie", icon: Building2, key: "organisatie" },
   { title: "Personalia", url: "/personalia", icon: Users, key: "personalia" },
   { title: "Verzuim", url: "/verzuim", icon: Clock, key: "verzuim" },
+  { title: "Beloningen", url: "/beloningen", icon: Star, key: "beloningen" },
   { title: "Applicaties", url: "/applicaties", icon: AppWindow, key: "applicaties" },
   { title: "Beheer", url: "/beheer", icon: Shield, key: "beheer" },
 ];
@@ -54,14 +56,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[hsl(48,96%,53%)] text-[hsl(152,30%,10%)] font-bold text-sm shadow-sm">
             KD
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold">Kantoor Dashboard</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-sm font-semibold text-sidebar-foreground">Kantoor Dashboard</span>
+            <span className="text-xs text-sidebar-foreground/60">
               {user?.role === "admin" ? "Beheerportaal" : "Medewerkersportaal"}
             </span>
           </div>
@@ -69,7 +71,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigatie</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/50 text-[10px] uppercase tracking-wider font-semibold">Navigatie</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleItems.map((item) => {
@@ -89,22 +91,23 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-3 border-t border-sidebar-border">
         <div className="space-y-2">
           <Link href="/profiel" data-testid="nav-profiel">
             <div className={`flex items-center gap-3 p-2 rounded-md cursor-pointer hover-elevate ${location === "/profiel" ? "bg-sidebar-accent" : ""}`}>
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                <AvatarFallback className="text-xs bg-[hsl(48,96%,53%)] text-[hsl(152,30%,10%)] font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-medium truncate">{user?.fullName}</span>
-                <span className="text-xs text-muted-foreground capitalize">{user?.role === "admin" ? "Beheerder" : user?.role === "manager" ? "Manager" : "Medewerker"}</span>
+                <span className="text-sm font-medium truncate text-sidebar-foreground">{user?.fullName}</span>
+                <span className="text-xs text-sidebar-foreground/60 capitalize">{user?.role === "admin" ? "Beheerder" : user?.role === "manager" ? "Manager" : "Medewerker"}</span>
               </div>
               <Button
                 size="icon"
                 variant="ghost"
+                className="text-sidebar-foreground/60"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); logout(); }}
                 data-testid="button-logout"
               >

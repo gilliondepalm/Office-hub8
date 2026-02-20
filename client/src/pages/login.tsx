@@ -5,12 +5,12 @@ import { loginSchema } from "@shared/schema";
 import { z } from "zod";
 import { useAuth } from "@/lib/auth";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, User } from "lucide-react";
+import { Lock, User, Building2 } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -40,89 +40,129 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
-          <div className="flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-xl">
+    <div className="min-h-screen flex">
+      <div className="hidden lg:flex lg:w-1/2 relative">
+        <img
+          src="/images/login-hero.jpg"
+          alt="Kantoor"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(152,40%,20%/0.85)] to-[hsl(152,50%,12%/0.9)]" />
+        <div className="relative z-10 flex flex-col justify-between p-12 text-white">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[hsl(48,96%,53%)] text-[hsl(152,30%,10%)] font-bold text-sm">
               KD
             </div>
+            <span className="text-lg font-semibold tracking-tight">Kantoor Dashboard</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Kantoor Dashboard</h1>
-          <p className="text-muted-foreground text-sm">
-            Voer uw gegevens in om in te loggen
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader className="pb-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Welkom terug
+          <div className="space-y-4 max-w-md">
+            <h1 className="text-4xl font-bold leading-tight">
+              Uw kantoor,<br />overzichtelijk beheerd
+            </h1>
+            <p className="text-white/80 text-lg leading-relaxed">
+              Beheer medewerkers, evenementen, afwezigheden en meer vanuit een centraal platform.
             </p>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gebruikersnaam</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            {...field}
-                            placeholder="Voer gebruikersnaam in"
-                            className="pl-10"
-                            data-testid="input-username"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Wachtwoord</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            {...field}
-                            type="password"
-                            placeholder="Voer wachtwoord in"
-                            className="pl-10"
-                            data-testid="input-password"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading}
-                  data-testid="button-login"
-                >
-                  {loading ? "Inloggen..." : "Inloggen"}
-                </Button>
-              </form>
-            </Form>
-            <div className="mt-4 p-3 rounded-md bg-muted">
-              <p className="text-xs text-muted-foreground text-center">
-                Demo: <strong>admin</strong> / <strong>admin123</strong>
-              </p>
+            <div className="flex items-center gap-6 pt-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-[hsl(48,96%,53%)]">9+</p>
+                <p className="text-xs text-white/70">Modules</p>
+              </div>
+              <div className="w-px h-10 bg-white/20" />
+              <div className="text-center">
+                <p className="text-2xl font-bold text-[hsl(48,96%,53%)]">100%</p>
+                <p className="text-xs text-white/70">Veilig</p>
+              </div>
+              <div className="w-px h-10 bg-white/20" />
+              <div className="text-center">
+                <p className="text-2xl font-bold text-[hsl(48,96%,53%)]">24/7</p>
+                <p className="text-xs text-white/70">Toegang</p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-xs text-white/50">Kantoor Dashboard v2.0</p>
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center bg-background p-6">
+        <div className="w-full max-w-sm space-y-8">
+          <div className="text-center space-y-3 lg:text-left">
+            <div className="flex justify-center lg:hidden">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-lg">
+                KD
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight">Welkom terug</h2>
+            <p className="text-muted-foreground text-sm">
+              Voer uw gegevens in om toegang te krijgen tot het dashboard
+            </p>
+          </div>
+
+          <Card className="border-0 shadow-none bg-transparent">
+            <CardContent className="p-0">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Gebruikersnaam</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              {...field}
+                              placeholder="Voer gebruikersnaam in"
+                              className="pl-10 h-11 bg-card border-border"
+                              data-testid="input-username"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Wachtwoord</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              {...field}
+                              type="password"
+                              placeholder="Voer wachtwoord in"
+                              className="pl-10 h-11 bg-card border-border"
+                              data-testid="input-password"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    className="w-full h-11 font-semibold text-sm"
+                    disabled={loading}
+                    data-testid="button-login"
+                  >
+                    <Building2 className="h-4 w-4 mr-2" />
+                    {loading ? "Inloggen..." : "Inloggen"}
+                  </Button>
+                </form>
+              </Form>
+              <div className="mt-6 p-3 rounded-md bg-accent/50 border border-accent">
+                <p className="text-xs text-accent-foreground text-center">
+                  Demo: <strong>admin</strong> / <strong>admin123</strong>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
