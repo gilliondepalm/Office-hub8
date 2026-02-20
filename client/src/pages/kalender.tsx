@@ -485,10 +485,10 @@ export default function KalenderPage() {
   const selectedDayEntries = selectedDay ? getEntriesForDay(selectedDay) : [];
 
   const legendItems = [
-    { type: "event", label: "Evenement", color: "bg-primary/20" },
-    { type: "verjaardag", label: "Verjaardag", color: "bg-pink-200 dark:bg-pink-900/40" },
-    { type: "jubileum", label: "Jubileum", color: "bg-amber-200 dark:bg-amber-900/40" },
-    { type: "feestdag", label: "Feestdag", color: "bg-orange-200 dark:bg-orange-900/40" },
+    { type: "event", label: "Evenement", color: "bg-primary" },
+    { type: "verjaardag", label: "Verjaardag", color: "bg-pink-500" },
+    { type: "jubileum", label: "Jubileum", color: "bg-amber-500" },
+    { type: "feestdag", label: "Feestdag", color: "bg-orange-500" },
   ];
 
   if (loadingEvents) {
@@ -505,7 +505,6 @@ export default function KalenderPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-kalender-title">Evenementen Kalender</h1>
-          <p className="text-muted-foreground text-sm">Evenementen, verjaardagen, jubilea en feestdagen</p>
         </div>
         <Button onClick={() => { setCreateDate(""); setCreateOpen(true); }} data-testid="button-add-event">
           <Plus className="h-4 w-4 mr-2" />
