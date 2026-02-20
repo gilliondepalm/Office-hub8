@@ -1,4 +1,5 @@
 import { useLocation, Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -25,8 +26,10 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import type { Message } from "@shared/schema";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, key: "dashboard" },
@@ -43,6 +46,12 @@ const menuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+
+  const { data: messages } = useQuery<(Message & { fromUserName?: string; toUserName?: string })[]>({
+    queryKey: ["/api/messages"],
+  });
+
+  const unreadCount = messages?.filter((m) => m.toUserId === user?.id && !m.read).length || 0;
 
   const userPermissions = user?.permissions || [];
   const visibleItems = menuItems.filter((item) => userPermissions.includes(item.key));
@@ -71,7 +80,16 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/50 text-[10px] uppercase tracking-wider font-semibold">Navigatie</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/50 text-[10px] uppercase tracking-wider font-semibold">
+            <span className="flex items-center gap-2">
+              Navigatie
+              {unreadCount > 0 && (
+                <Badge className="h-5 min-w-5 px-1.5 text-[10px] font-bold bg-[hsl(48,96%,53%)] text-[hsl(152,30%,10%)] hover:bg-[hsl(48,96%,53%)]" data-testid="badge-unread-messages">
+                  {unreadCount}
+                </Badge>
+              )}
+            </span>
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleItems.map((item) => {
