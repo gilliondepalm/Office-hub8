@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.main-content-area > div {
+  padding-bottom: 6rem;
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);
