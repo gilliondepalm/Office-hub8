@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, User, Building2 } from "lucide-react";
+import curacaoPhoto from "@assets/stock_images/curacao_login.jpg";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -53,8 +54,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex">
       <div className="hidden lg:flex lg:w-1/2 relative">
         <img
-          src={loginPhoto?.value || "/images/login-hero.jpg"}
-          alt="Kantoor"
+          src={loginPhoto?.value || curacaoPhoto}
+          alt="Curaçao"
           className="absolute inset-0 w-full h-full object-cover"
           data-testid="img-login-photo"
         />
