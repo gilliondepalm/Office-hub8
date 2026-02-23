@@ -4,19 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  CalendarDays,
   Megaphone,
   Users,
   Clock,
   AlertCircle,
   CheckCircle,
-  TrendingUp,
-  ArrowRight,
   Camera,
 } from "lucide-react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Event, Announcement, Absence } from "@shared/schema";
+import type { Announcement, Absence } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { useRef } from "react";
 import { queryClient } from "@/lib/queryClient";
@@ -108,8 +105,17 @@ export default function DashboardPage() {
     pendingAbsences: number;
   }>({ queryKey: ["/api/dashboard/stats"] });
 
-  const { data: events } = useQuery<Event[]>({
-    queryKey: ["/api/events"],
+  const { data: vacationBalance } = useQuery<{
+    userId: string;
+    userName: string;
+    totalDays: number;
+    geplandDays: number;
+    toegekendDays: number;
+    opgenomenDays: number;
+    sickDays: number;
+    remainingDays: number;
+  }[]>({
+    queryKey: ["/api/vacation-balance"],
   });
 
   const { data: announcements } = useQuery<Announcement[]>({
@@ -120,13 +126,11 @@ export default function DashboardPage() {
     queryKey: [isAdmin ? "/api/absences" : "/api/absences/mine"],
   });
 
-  const upcomingEvents = events
-    ?.filter((e) => new Date(e.date) >= new Date())
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 5) || [];
-
   const recentAnnouncements = announcements?.slice(0, 4) || [];
   const pendingAbsences = absences?.filter((a) => a.status === "pending").slice(0, 5) || [];
+
+  const myBalance = vacationBalance?.find(b => b.userId === user?.id);
+  const currentYear = new Date().getFullYear();
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -197,7 +201,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 ${isAdmin ? "sm:grid-cols-2" : "sm:grid-cols-1"} gap-4`}>
           {isAdmin && (
             <StatCard
               title="Medewerkers"
@@ -216,54 +220,9 @@ export default function DashboardPage() {
             color="text-amber-600 dark:text-amber-400"
             iconBg="bg-amber-100 dark:bg-amber-900/30"
           />
-          <StatCard
-            title="Evenementen"
-            value={stats?.upcomingEvents || 0}
-            icon={CalendarDays}
-            description="Aankomende evenementen"
-            color="text-emerald-600 dark:text-emerald-400"
-            iconBg="bg-emerald-100 dark:bg-emerald-900/30"
-          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="border border-border/60">
-            <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30">
-                  <CalendarDays className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <h3 className="font-semibold text-sm">Aankomende Evenementen</h3>
-              </div>
-              <Badge variant="secondary" className="text-xs">{upcomingEvents.length}</Badge>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {upcomingEvents.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">Geen aankomende evenementen</p>
-              ) : (
-                <div className="space-y-2">
-                  {upcomingEvents.map((event) => (
-                    <div key={event.id} className="flex items-start gap-3 p-2.5 rounded-lg hover-elevate" data-testid={`event-item-${event.id}`}>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-bold">
-                        {format(new Date(event.date), "dd", { locale: nl })}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{event.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(event.date), "EEEE d MMMM", { locale: nl })}
-                          {event.time && ` - ${event.time}`}
-                        </p>
-                      </div>
-                      {event.category && (
-                        <Badge variant="outline" className="shrink-0 text-xs">{event.category}</Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           <Card className="border border-border/60">
             <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
               <div className="flex items-center gap-2">
@@ -308,7 +267,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 border border-border/60">
+          <Card className="border border-border/60">
             <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30">
@@ -318,7 +277,17 @@ export default function DashboardPage() {
               </div>
               <Badge variant="secondary" className="text-xs">{isAdmin ? pendingAbsences.length : (absences?.length || 0)}</Badge>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border/60 p-3" data-testid="stat-sick-count">
+                  <p className="text-xs text-muted-foreground font-medium">Ziekte meldingen {currentYear}</p>
+                  <p className="text-2xl font-bold mt-1">{myBalance?.sickDays ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-border/60 p-3" data-testid="stat-vacation-balance">
+                  <p className="text-xs text-muted-foreground font-medium">Saldo vakantiedagen {currentYear}</p>
+                  <p className="text-2xl font-bold mt-1">{myBalance?.remainingDays ?? 0} <span className="text-sm font-normal text-muted-foreground">/ {myBalance?.totalDays ?? 0}</span></p>
+                </div>
+              </div>
               {(isAdmin ? pendingAbsences : absences || []).length === 0 ? (
                 <div className="flex flex-col items-center py-6 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-3">
