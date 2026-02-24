@@ -116,7 +116,17 @@ export async function registerRoutes(
     res.sendFile(filePath);
   });
 
-  app.use("/uploads", requireAuth, express.default.static(uploadsDir));
+  app.use("/uploads", requireAuth, (req, res, next) => {
+    if (req.path.endsWith(".pdf")) {
+      const filePath = path.join(uploadsDir, req.path);
+      if (fs.existsSync(filePath)) {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline");
+        return res.sendFile(filePath);
+      }
+    }
+    next();
+  }, express.default.static(uploadsDir));
 
   app.post("/api/upload/pdf", requireAuth, uploadPdf.single("pdf"), (req: any, res) => {
     if (!req.file) {
