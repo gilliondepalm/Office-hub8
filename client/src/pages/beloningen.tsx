@@ -888,16 +888,16 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
 
   const scoreLabels: Record<number, string> = {
     1: "Onvoldoende",
-    2: "Matig",
-    3: "Voldoende",
-    4: "Goed",
-    5: "Uitstekend",
+    2: "Nog te ontwikkelen",
+    3: "Normaal/goed",
+    4: "Zeer goed/aantoonbaar beter",
+    5: "Uitstekend/voorbeeld voor anderen",
   };
 
   const reviewsToShow = isAdmin ? reviewsByYear : myReviews;
 
   if (viewMode === "competencies" && isAdmin) {
-    const normLabels: Record<number, string> = { 1: "Onvoldoende", 2: "Matig", 3: "Voldoende", 4: "Goed", 5: "Uitstekend" };
+    const normLabels: Record<number, string> = { 1: "Onvoldoende", 2: "Nog te ontwikkelen", 3: "Normaal/goed", 4: "Zeer goed/aantoonbaar beter", 5: "Uitstekend/voorbeeld voor anderen" };
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -956,9 +956,11 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
                           <div className="pl-6 space-y-2">
                             <p className="text-xs font-medium text-muted-foreground">Normering omschrijvingen:</p>
                             {[1, 2, 3, 4, 5].map(n => (
-                              <div key={n} className="flex items-center gap-2">
-                                <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px]">{n}</Badge>
-                                <span className="text-xs text-muted-foreground shrink-0 w-20">{normLabels[n]}</span>
+                              <div key={n} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                <div className="flex items-center gap-2 shrink-0 sm:w-64">
+                                  <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px]">{n}</Badge>
+                                  <span className="text-xs text-muted-foreground">{normLabels[n]}</span>
+                                </div>
                                 <Input
                                   value={(editCompNorms as any)[`norm${n}`]}
                                   onChange={e => setEditCompNorms(prev => ({ ...prev, [`norm${n}`]: e.target.value }))}
@@ -999,9 +1001,9 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
                               {[1, 2, 3, 4, 5].map(n => {
                                 const normVal = (comp as any)[`norm${n}`];
                                 return normVal ? (
-                                  <div key={n} className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px]">{n}</Badge>
-                                    <span className="shrink-0 w-16 font-medium">{normLabels[n]}</span>
+                                  <div key={n} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                    <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px] mt-0.5">{n}</Badge>
+                                    <span className="shrink-0 font-medium min-w-[12rem]">{normLabels[n]}</span>
                                     <span>{normVal}</span>
                                   </div>
                                 ) : null;
@@ -1029,9 +1031,11 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">Normering omschrijvingen (optioneel):</p>
                     {[1, 2, 3, 4, 5].map(n => (
-                      <div key={n} className="flex items-center gap-2">
-                        <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px]">{n}</Badge>
-                        <span className="text-xs text-muted-foreground shrink-0 w-20">{normLabels[n]}</span>
+                      <div key={n} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                        <div className="flex items-center gap-2 shrink-0 sm:w-64">
+                          <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px]">{n}</Badge>
+                          <span className="text-xs text-muted-foreground">{normLabels[n]}</span>
+                        </div>
                         <Input
                           value={(newCompNorms as any)[`norm${n}`]}
                           onChange={e => setNewCompNorms(prev => ({ ...prev, [`norm${n}`]: e.target.value }))}
