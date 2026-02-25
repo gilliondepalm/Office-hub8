@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +19,7 @@ import {
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
-import { Plus, Megaphone, Pin, Trash2, AlertCircle, Pencil, FileText, Upload, X, Send, Mail, MailOpen, Reply, Clock, User as UserIcon } from "lucide-react";
+import { Plus, Megaphone, Pin, Trash2, AlertCircle, Pencil, FileText, Upload, X, Send, Mail, MailOpen, Reply, Clock, User as UserIcon, Newspaper } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -448,7 +448,7 @@ export default function AankondigingenPage() {
   const [editAnn, setEditAnn] = useState<Announcement | null>(null);
   const [sendMsgOpen, setSendMsgOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<MessageWithNames | null>(null);
-  const [activeTab, setActiveTab] = useState<"announcements" | "messages">("announcements");
+  const [activeTab, setActiveTab] = useState<"announcements" | "messages" | "nieuwsbrieven">("announcements");
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -541,6 +541,18 @@ export default function AankondigingenPage() {
               {unreadCount}
             </Badge>
           )}
+        </button>
+        <button
+          onClick={() => setActiveTab("nieuwsbrieven")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "nieuwsbrieven"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+          data-testid="tab-nieuwsbrieven"
+        >
+          <Newspaper className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+          Nieuwsbrieven
         </button>
       </div>
 
@@ -690,6 +702,143 @@ export default function AankondigingenPage() {
             </div>
           )}
         </>
+      )}
+
+      {activeTab === "nieuwsbrieven" && (
+        <NieuwsbrievenTab />
+      )}
+    </div>
+  );
+}
+
+function NieuwsbrievenTab() {
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  type NieuwsbriefFile = { name: string; path: string; size: number; modified: string };
+
+  const { data: files, isLoading } = useQuery<NieuwsbriefFile[]>({
+    queryKey: ["/api/uploads/nieuwsbrief"],
+  });
+
+  const handleUpload = async (file: File) => {
+    if (file.type !== "application/pdf") {
+      toast({ title: "Alleen PDF-bestanden toegestaan", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("pdf", file);
+      const res = await fetch("/api/uploads/nieuwsbrief", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Upload mislukt");
+      queryClient.invalidateQueries({ queryKey: ["/api/uploads/nieuwsbrief"] });
+      toast({ title: "Nieuwsbrief toegevoegd" });
+    } catch {
+      toast({ title: "Fout bij uploaden", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (filename: string) => {
+    try {
+      const res = await fetch(`/api/uploads/nieuwsbrief/${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Verwijderen mislukt");
+      queryClient.invalidateQueries({ queryKey: ["/api/uploads/nieuwsbrief"] });
+      toast({ title: "Nieuwsbrief verwijderd" });
+    } catch {
+      toast({ title: "Fout bij verwijderen", variant: "destructive" });
+    }
+  };
+
+  if (isLoading) {
+    return <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {isAdmin && (
+        <div className="flex justify-end">
+          <Button
+            onClick={() => document.getElementById("nieuwsbrief-upload-input")?.click()}
+            disabled={uploading}
+            data-testid="button-add-nieuwsbrief"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {uploading ? "Uploaden..." : "Nieuw Document"}
+          </Button>
+          <input
+            id="nieuwsbrief-upload-input"
+            type="file"
+            className="hidden"
+            accept=".pdf,application/pdf"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleUpload(file);
+              e.target.value = "";
+            }}
+            data-testid="input-nieuwsbrief-upload"
+          />
+        </div>
+      )}
+
+      {!files || files.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center py-12">
+            <Newspaper className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Geen nieuwsbrieven gevonden</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Newspaper className="h-4 w-4 text-primary" />
+              Documenten ({files.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {files.map((file) => (
+                <div
+                  key={file.name}
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-md group hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => window.open(file.path, "_blank")}
+                  data-testid={`nieuwsbrief-file-${file.name}`}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="h-5 w-5 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{file.name.replace(/\.pdf$/i, "")}</p>
+                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="shrink-0 invisible group-hover:visible"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(file.name); }}
+                      data-testid={`button-delete-nieuwsbrief-${file.name}`}
+                    >
+                      <Trash2 className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

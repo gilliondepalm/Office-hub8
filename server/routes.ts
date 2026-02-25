@@ -273,6 +273,65 @@ export async function registerRoutes(
     }
   });
 
+  const nieuwsbriefDir = path.join(uploadsDir, "Nieuwsbrief");
+  if (!fs.existsSync(nieuwsbriefDir)) {
+    fs.mkdirSync(nieuwsbriefDir, { recursive: true });
+  }
+
+  app.get("/api/uploads/nieuwsbrief", requireAuth, (_req, res) => {
+    try {
+      const files = fs.readdirSync(nieuwsbriefDir)
+        .filter((f: string) => f.toLowerCase().endsWith(".pdf"))
+        .map((f: string) => {
+          const stat = fs.statSync(path.join(nieuwsbriefDir, f));
+          return { name: f, path: `/uploads/Nieuwsbrief/${f}`, size: stat.size, modified: stat.mtime };
+        })
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      res.json(files);
+    } catch {
+      res.json([]);
+    }
+  });
+
+  const nieuwsbriefUpload = multer({
+    storage: multer.diskStorage({
+      destination: (_req: any, _file: any, cb: any) => cb(null, nieuwsbriefDir),
+      filename: (_req: any, file: any, cb: any) => cb(null, file.originalname),
+    }),
+    fileFilter: (_req: any, file: any, cb: any) => {
+      if (file.mimetype === "application/pdf") cb(null, true);
+      else cb(new Error("Alleen PDF-bestanden"));
+    },
+  });
+
+  app.post("/api/uploads/nieuwsbrief", requireAuth, nieuwsbriefUpload.single("pdf"), async (req: any, res) => {
+    const userId = (req.session as any).userId;
+    const user = await storage.getUser(userId);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ message: "Alleen beheerders" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: "Geen PDF-bestand ontvangen" });
+    }
+    res.json({ name: req.file.originalname, path: `/uploads/Nieuwsbrief/${req.file.originalname}` });
+  });
+
+  app.delete("/api/uploads/nieuwsbrief/:filename", requireAuth, async (req: any, res) => {
+    const userId = (req.session as any).userId;
+    const user = await storage.getUser(userId);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ message: "Alleen beheerders" });
+    }
+    const filename = req.params.filename.replace(/[^a-zA-Z0-9._\- ]/g, "");
+    const filePath = path.join(nieuwsbriefDir, filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      res.json({ message: "Verwijderd" });
+    } else {
+      res.status(404).json({ message: "Bestand niet gevonden" });
+    }
+  });
+
   const instructiesDir = path.join(uploadsDir, "Instructies");
   if (!fs.existsSync(instructiesDir)) {
     fs.mkdirSync(instructiesDir, { recursive: true });
