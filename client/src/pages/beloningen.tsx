@@ -1563,9 +1563,9 @@ export default function BeloningenPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-beloningen-title">Beloningen</h1>
-          <p className="text-muted-foreground text-sm">Functionering, beoordeling en beloningsysteem</p>
+          <p className="text-muted-foreground text-sm">Functionering, beoordeling en beloning</p>
         </div>
-        {activeTab === "beloningsysteem" && (user?.role === "admin" || user?.role === "manager") && (
+        {activeTab === "beloningsysteem" && user?.role === "admin" && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-reward">
@@ -1644,18 +1644,20 @@ export default function BeloningenPage() {
           <UserCheck className="h-4 w-4 inline mr-1.5 -mt-0.5" />
           Beoordeling
         </button>
-        <button
-          onClick={() => setActiveTab("beloningsysteem")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === "beloningsysteem"
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-          data-testid="tab-beloningsysteem"
-        >
-          <Gift className="h-4 w-4 inline mr-1.5 -mt-0.5" />
-          Beloningsysteem
-        </button>
+        {user?.role === "admin" && (
+          <button
+            onClick={() => setActiveTab("beloningsysteem")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "beloningsysteem"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            data-testid="tab-beloningsysteem"
+          >
+            <Gift className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+            Beloning
+          </button>
+        )}
       </div>
 
       {activeTab === "functionering" && (
@@ -1666,7 +1668,7 @@ export default function BeloningenPage() {
         <BeoordelingSection users={users} currentUser={user} />
       )}
 
-      {activeTab === "beloningsysteem" && (
+      {activeTab === "beloningsysteem" && user?.role === "admin" && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center gap-2 pb-3">
