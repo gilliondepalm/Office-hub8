@@ -23,6 +23,7 @@ export const users = pgTable("users", {
   birthDate: date("birth_date"),
   vacationDaysTotal: integer("vacation_days_total").default(25),
   phoneExtension: text("phone_extension"),
+  functie: text("functie"),
 });
 
 export const events = pgTable("events", {
@@ -195,6 +196,11 @@ export const competencies = pgTable("competencies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   functie: text("functie").notNull(),
   name: text("name").notNull(),
+  norm1: text("norm_1").notNull().default(""),
+  norm2: text("norm_2").notNull().default(""),
+  norm3: text("norm_3").notNull().default(""),
+  norm4: text("norm_4").notNull().default(""),
+  norm5: text("norm_5").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

@@ -40,6 +40,7 @@ const userFormSchema = z.object({
   startDate: z.string().min(1, "Datum in dienst is verplicht"),
   birthDate: z.string().optional(),
   phoneExtension: z.string().optional(),
+  functie: z.string().optional(),
 });
 
 const editFormSchema = z.object({
@@ -52,6 +53,7 @@ const editFormSchema = z.object({
   startDate: z.string().min(1, "Datum in dienst is verplicht"),
   birthDate: z.string().optional(),
   phoneExtension: z.string().optional(),
+  functie: z.string().optional(),
 });
 
 const deactivateFormSchema = z.object({
@@ -82,6 +84,7 @@ function EditDialog({
       startDate: user.startDate || "",
       birthDate: user.birthDate || "",
       phoneExtension: user.phoneExtension || "",
+      functie: user.functie || "",
     },
   });
 
@@ -96,6 +99,7 @@ function EditDialog({
         startDate: data.startDate,
         birthDate: data.birthDate || null,
         phoneExtension: data.phoneExtension || null,
+        functie: data.functie || null,
       };
       if (data.password && data.password.length > 0) {
         payload.password = data.password;
@@ -206,6 +210,13 @@ function EditDialog({
               <FormItem>
                 <FormLabel>Toestelnummer</FormLabel>
                 <FormControl><Input {...field} placeholder="bijv. 101" data-testid="input-edit-phone-extension" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="functie" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Functie</FormLabel>
+                <FormControl><Input {...field} placeholder="bijv. Landmeter, Administratief Medewerker" data-testid="input-edit-functie" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
@@ -920,7 +931,7 @@ export default function PersonaliaPage() {
       username: "", password: "", fullName: "", email: "",
       role: "employee", department: "",
       startDate: new Date().toISOString().split("T")[0],
-      birthDate: "", phoneExtension: "",
+      birthDate: "", phoneExtension: "", functie: "",
     },
   });
 
@@ -931,6 +942,7 @@ export default function PersonaliaPage() {
         department: data.department || null,
         birthDate: data.birthDate || null,
         phoneExtension: data.phoneExtension || null,
+        functie: data.functie || null,
         avatar: null,
         active: true,
         endDate: null,
@@ -1090,6 +1102,13 @@ export default function PersonaliaPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
+                  <FormField control={createForm.control} name="functie" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Functie</FormLabel>
+                      <FormControl><Input {...field} placeholder="bijv. Landmeter, Administratief Medewerker" data-testid="input-user-functie" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-user">
                     {createMutation.isPending ? "Opslaan..." : "Medewerker Opslaan"}
                   </Button>
@@ -1186,6 +1205,7 @@ export default function PersonaliaPage() {
                             <TableRow>
                               <TableHead>Medewerker</TableHead>
                               <TableHead>E-mail</TableHead>
+                              <TableHead>Functie</TableHead>
                               <TableHead>Toestel</TableHead>
                               <TableHead>Rol</TableHead>
                               <TableHead>Geboortedatum</TableHead>
@@ -1215,6 +1235,11 @@ export default function PersonaliaPage() {
                                     <span className="flex items-center gap-1 text-sm text-muted-foreground">
                                       <Mail className="h-3 w-3" />
                                       {u.email}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="text-sm text-muted-foreground" data-testid={`text-functie-${u.id}`}>
+                                      {u.functie || "-"}
                                     </span>
                                   </TableCell>
                                   <TableCell>
