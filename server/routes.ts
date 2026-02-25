@@ -14,6 +14,7 @@ import {
   insertApplicationSchema, insertAppAccessSchema, insertMessageSchema,
   insertAoProcedureSchema, insertAoInstructionSchema, insertPositionHistorySchema,
   insertPersonalDevelopmentSchema, insertLegislationLinkSchema, insertCaoDocumentSchema,
+  insertFunctioneringReviewSchema,
 } from "@shared/schema";
 
 const PgStore = pgSession(session);
@@ -791,6 +792,63 @@ export async function registerRoutes(
   app.get("/api/rewards/leaderboard", requireAuth, async (_req, res) => {
     const lb = await storage.getLeaderboard();
     res.json(lb);
+  });
+
+  app.get("/api/functionering", requireAuth, async (req, res) => {
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    if (year) {
+      const reviews = await storage.getFunctioneringReviewsByYear(year);
+      res.json(reviews);
+    } else {
+      const reviews = await storage.getFunctioneringReviews();
+      res.json(reviews);
+    }
+  });
+
+  app.get("/api/functionering/mine", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const reviews = await storage.getFunctioneringReviewsByUser(userId);
+    res.json(reviews);
+  });
+
+  app.get("/api/functionering/:userId/:year", requireAuth, async (req, res) => {
+    const { userId, year } = req.params;
+    const review = await storage.getFunctioneringReviewByUserAndYear(userId, parseInt(year));
+    if (!review) {
+      res.status(404).json({ message: "Geen functioneringsgesprek gevonden" });
+      return;
+    }
+    res.json(review);
+  });
+
+  app.post("/api/functionering", requireAuth, async (req, res) => {
+    try {
+      const parsed = insertFunctioneringReviewSchema.parse(req.body);
+      const existing = await storage.getFunctioneringReviewByUserAndYear(parsed.userId, parsed.year);
+      if (existing) {
+        const updated = await storage.updateFunctioneringReview(existing.id, parsed);
+        res.json(updated);
+      } else {
+        const review = await storage.createFunctioneringReview(parsed);
+        res.json(review);
+      }
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Validatiefout" });
+    }
+  });
+
+  app.put("/api/functionering/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateFunctioneringReview(req.params.id, req.body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Bijwerken mislukt" });
+    }
+  });
+
+  app.delete("/api/functionering/:id", requireAuth, async (req, res) => {
+    await storage.deleteFunctioneringReview(req.params.id);
+    res.json({ success: true });
   });
 
   app.get("/api/applications", requireAuth, async (_req, res) => {

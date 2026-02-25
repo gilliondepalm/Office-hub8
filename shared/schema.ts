@@ -156,6 +156,41 @@ export const caoDocuments = pgTable("cao_documents", {
   documentUrl: text("document_url").notNull(),
 });
 
+export const functioneringReviews = pgTable("functionering_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  year: integer("year").notNull(),
+  medewerker: text("medewerker").notNull(),
+  functie: text("functie"),
+  afdeling: text("afdeling"),
+  leidinggevende: text("leidinggevende"),
+  datum: date("datum").notNull(),
+  periode: text("periode"),
+  terugblikTaken: text("terugblik_taken"),
+  terugblikResultaten: text("terugblik_resultaten"),
+  terugblikKnelpunten: text("terugblik_knelpunten"),
+  werkinhoud: text("werkinhoud"),
+  samenwerking: text("samenwerking"),
+  communicatie: text("communicatie"),
+  leidinggeven: text("leidinggeven"),
+  arbeidsomstandigheden: text("arbeidsomstandigheden"),
+  persoonlijkeOntwikkeling: text("persoonlijke_ontwikkeling"),
+  scholingswensen: text("scholingswensen"),
+  loopbaanwensen: text("loopbaanwensen"),
+  doelstelling1: text("doelstelling_1"),
+  doelstelling1Termijn: text("doelstelling_1_termijn"),
+  doelstelling2: text("doelstelling_2"),
+  doelstelling2Termijn: text("doelstelling_2_termijn"),
+  doelstelling3: text("doelstelling_3"),
+  doelstelling3Termijn: text("doelstelling_3_termijn"),
+  afspraken: text("afspraken"),
+  opmerkingMedewerker: text("opmerking_medewerker"),
+  opmerkingLeidinggevende: text("opmerking_leidinggevende"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const siteSettings = pgTable("site_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
@@ -177,6 +212,7 @@ export const insertPositionHistorySchema = createInsertSchema(positionHistory).o
 export const insertPersonalDevelopmentSchema = createInsertSchema(personalDevelopment).omit({ id: true });
 export const insertLegislationLinkSchema = createInsertSchema(legislationLinks).omit({ id: true });
 export const insertCaoDocumentSchema = createInsertSchema(caoDocuments).omit({ id: true });
+export const insertFunctioneringReviewSchema = createInsertSchema(functioneringReviews).omit({ id: true, createdAt: true, updatedAt: true });
 
 export const loginSchema = z.object({
   username: z.string().min(1, "Gebruikersnaam is verplicht"),
@@ -213,3 +249,5 @@ export type InsertLegislationLink = z.infer<typeof insertLegislationLinkSchema>;
 export type LegislationLink = typeof legislationLinks.$inferSelect;
 export type InsertCaoDocument = z.infer<typeof insertCaoDocumentSchema>;
 export type CaoDocument = typeof caoDocuments.$inferSelect;
+export type InsertFunctioneringReview = z.infer<typeof insertFunctioneringReviewSchema>;
+export type FunctioneringReview = typeof functioneringReviews.$inferSelect;

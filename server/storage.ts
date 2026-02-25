@@ -3,6 +3,7 @@ import { eq, desc, sql, and } from "drizzle-orm";
 import {
   users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
   aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks, caoDocuments, siteSettings,
+  functioneringReviews,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -18,6 +19,7 @@ import {
   type PersonalDevelopment, type InsertPersonalDevelopment,
   type LegislationLink, type InsertLegislationLink,
   type CaoDocument, type InsertCaoDocument,
+  type FunctioneringReview, type InsertFunctioneringReview,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -108,6 +110,14 @@ export interface IStorage {
 
   getSiteSetting(key: string): Promise<string | null>;
   setSiteSetting(key: string, value: string): Promise<void>;
+
+  getFunctioneringReviews(): Promise<(FunctioneringReview & { userName?: string })[]>;
+  getFunctioneringReviewsByUser(userId: string): Promise<FunctioneringReview[]>;
+  getFunctioneringReviewsByYear(year: number): Promise<(FunctioneringReview & { userName?: string })[]>;
+  getFunctioneringReviewByUserAndYear(userId: string, year: number): Promise<FunctioneringReview | undefined>;
+  createFunctioneringReview(review: InsertFunctioneringReview): Promise<FunctioneringReview>;
+  updateFunctioneringReview(id: string, data: Partial<InsertFunctioneringReview>): Promise<FunctioneringReview>;
+  deleteFunctioneringReview(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -580,6 +590,122 @@ export class DatabaseStorage implements IStorage {
       .insert(siteSettings)
       .values({ key, value, updatedAt: new Date() })
       .onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } });
+  }
+
+  async getFunctioneringReviews(): Promise<(FunctioneringReview & { userName?: string })[]> {
+    const result = await db
+      .select({
+        id: functioneringReviews.id,
+        userId: functioneringReviews.userId,
+        year: functioneringReviews.year,
+        medewerker: functioneringReviews.medewerker,
+        functie: functioneringReviews.functie,
+        afdeling: functioneringReviews.afdeling,
+        leidinggevende: functioneringReviews.leidinggevende,
+        datum: functioneringReviews.datum,
+        periode: functioneringReviews.periode,
+        terugblikTaken: functioneringReviews.terugblikTaken,
+        terugblikResultaten: functioneringReviews.terugblikResultaten,
+        terugblikKnelpunten: functioneringReviews.terugblikKnelpunten,
+        werkinhoud: functioneringReviews.werkinhoud,
+        samenwerking: functioneringReviews.samenwerking,
+        communicatie: functioneringReviews.communicatie,
+        leidinggeven: functioneringReviews.leidinggeven,
+        arbeidsomstandigheden: functioneringReviews.arbeidsomstandigheden,
+        persoonlijkeOntwikkeling: functioneringReviews.persoonlijkeOntwikkeling,
+        scholingswensen: functioneringReviews.scholingswensen,
+        loopbaanwensen: functioneringReviews.loopbaanwensen,
+        doelstelling1: functioneringReviews.doelstelling1,
+        doelstelling1Termijn: functioneringReviews.doelstelling1Termijn,
+        doelstelling2: functioneringReviews.doelstelling2,
+        doelstelling2Termijn: functioneringReviews.doelstelling2Termijn,
+        doelstelling3: functioneringReviews.doelstelling3,
+        doelstelling3Termijn: functioneringReviews.doelstelling3Termijn,
+        afspraken: functioneringReviews.afspraken,
+        opmerkingMedewerker: functioneringReviews.opmerkingMedewerker,
+        opmerkingLeidinggevende: functioneringReviews.opmerkingLeidinggevende,
+        createdBy: functioneringReviews.createdBy,
+        createdAt: functioneringReviews.createdAt,
+        updatedAt: functioneringReviews.updatedAt,
+        userName: users.fullName,
+      })
+      .from(functioneringReviews)
+      .leftJoin(users, eq(functioneringReviews.userId, users.id))
+      .orderBy(desc(functioneringReviews.year), desc(functioneringReviews.createdAt));
+    return result as any;
+  }
+
+  async getFunctioneringReviewsByUser(userId: string): Promise<FunctioneringReview[]> {
+    return db.select().from(functioneringReviews)
+      .where(eq(functioneringReviews.userId, userId))
+      .orderBy(desc(functioneringReviews.year));
+  }
+
+  async getFunctioneringReviewsByYear(year: number): Promise<(FunctioneringReview & { userName?: string })[]> {
+    const result = await db
+      .select({
+        id: functioneringReviews.id,
+        userId: functioneringReviews.userId,
+        year: functioneringReviews.year,
+        medewerker: functioneringReviews.medewerker,
+        functie: functioneringReviews.functie,
+        afdeling: functioneringReviews.afdeling,
+        leidinggevende: functioneringReviews.leidinggevende,
+        datum: functioneringReviews.datum,
+        periode: functioneringReviews.periode,
+        terugblikTaken: functioneringReviews.terugblikTaken,
+        terugblikResultaten: functioneringReviews.terugblikResultaten,
+        terugblikKnelpunten: functioneringReviews.terugblikKnelpunten,
+        werkinhoud: functioneringReviews.werkinhoud,
+        samenwerking: functioneringReviews.samenwerking,
+        communicatie: functioneringReviews.communicatie,
+        leidinggeven: functioneringReviews.leidinggeven,
+        arbeidsomstandigheden: functioneringReviews.arbeidsomstandigheden,
+        persoonlijkeOntwikkeling: functioneringReviews.persoonlijkeOntwikkeling,
+        scholingswensen: functioneringReviews.scholingswensen,
+        loopbaanwensen: functioneringReviews.loopbaanwensen,
+        doelstelling1: functioneringReviews.doelstelling1,
+        doelstelling1Termijn: functioneringReviews.doelstelling1Termijn,
+        doelstelling2: functioneringReviews.doelstelling2,
+        doelstelling2Termijn: functioneringReviews.doelstelling2Termijn,
+        doelstelling3: functioneringReviews.doelstelling3,
+        doelstelling3Termijn: functioneringReviews.doelstelling3Termijn,
+        afspraken: functioneringReviews.afspraken,
+        opmerkingMedewerker: functioneringReviews.opmerkingMedewerker,
+        opmerkingLeidinggevende: functioneringReviews.opmerkingLeidinggevende,
+        createdBy: functioneringReviews.createdBy,
+        createdAt: functioneringReviews.createdAt,
+        updatedAt: functioneringReviews.updatedAt,
+        userName: users.fullName,
+      })
+      .from(functioneringReviews)
+      .leftJoin(users, eq(functioneringReviews.userId, users.id))
+      .where(eq(functioneringReviews.year, year))
+      .orderBy(functioneringReviews.medewerker);
+    return result as any;
+  }
+
+  async getFunctioneringReviewByUserAndYear(userId: string, year: number): Promise<FunctioneringReview | undefined> {
+    const [review] = await db.select().from(functioneringReviews)
+      .where(and(eq(functioneringReviews.userId, userId), eq(functioneringReviews.year, year)));
+    return review;
+  }
+
+  async createFunctioneringReview(review: InsertFunctioneringReview): Promise<FunctioneringReview> {
+    const [created] = await db.insert(functioneringReviews).values(review).returning();
+    return created;
+  }
+
+  async updateFunctioneringReview(id: string, data: Partial<InsertFunctioneringReview>): Promise<FunctioneringReview> {
+    const [updated] = await db.update(functioneringReviews)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(functioneringReviews.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFunctioneringReview(id: string): Promise<void> {
+    await db.delete(functioneringReviews).where(eq(functioneringReviews.id, id));
   }
 }
 

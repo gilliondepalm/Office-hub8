@@ -17,7 +17,7 @@ A comprehensive office dashboard application with 9 modules and granular permiss
 4. **Organisatie** - Department management with tabs: Afdelingen (department cards with manager info), AO-Procedures (admin-managed procedures with step-by-step instructions per department), Organogram (visual org chart), CAO Info (collective labor agreement overview), Wetgeving (legislation links grouped by category)
 5. **Personalia** - Employee directory with roles and departments
 6. **Verzuim** - Absence/leave management with approval workflow, BVVD (bijzonder verlof) with predefined reasons, vacation day balance tracking per employee, admin vacation day allowance management
-7. **Beloningsysteem** - Points-based rewards with leaderboard
+7. **Beloningen** - Functioneringsgesprekken (performance reviews) with database storage and year-based filtering, plus points-based rewards with leaderboard
 8. **Applicaties** - Application access management with user permissions
 9. **Beheer** - Admin-only user permissions management (toggle module access per user)
 10. **Mijn Profiel** - Personal profile page with own absences, rewards, and access overview
@@ -49,6 +49,12 @@ All routes prefixed with `/api/` and require authentication except login.
 - GET /api/absences/mine - Current user's absences only
 - GET/POST /api/rewards, GET /api/rewards/leaderboard
 - GET /api/rewards/mine - Current user's rewards only
+- GET /api/functionering?year=YYYY - Functionering reviews, optionally filtered by year
+- GET /api/functionering/mine - Current user's reviews
+- GET /api/functionering/:userId/:year - Specific review by user and year
+- POST /api/functionering - Create or update review (upsert by userId+year)
+- PUT /api/functionering/:id - Update specific review
+- DELETE /api/functionering/:id - Delete review
 - GET/POST/DELETE /api/applications, /api/app-access
 - GET /api/dashboard/stats
 - PATCH /api/users/:id/permissions - Admin only, update user module permissions

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,16 +19,23 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Award, Star, TrendingUp, ClipboardCheck, UserCheck, Gift, Printer } from "lucide-react";
+import { Plus, Award, Star, TrendingUp, ClipboardCheck, UserCheck, Gift, Printer, Save, ChevronLeft, ChevronRight, Eye, FileText, Trash2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Reward, User } from "@shared/schema";
+import type { Reward, User, FunctioneringReview } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 
 function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser?: User | null }) {
-  const [formData, setFormData] = useState({
+  const { toast } = useToast();
+  const isAdmin = currentUser?.role === "admin" || currentUser?.role === "manager";
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"form" | "overview">(isAdmin ? "overview" : "form");
+  const [viewingReview, setViewingReview] = useState<FunctioneringReview | null>(null);
+
+  const emptyForm = {
     medewerker: "",
     functie: "",
     afdeling: "",
@@ -55,6 +62,51 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
     afspraken: "",
     opmerkingMedewerker: "",
     opmerkingLeidinggevende: "",
+  };
+
+  const [formData, setFormData] = useState(emptyForm);
+
+  const { data: reviewsByYear, isLoading: loadingReviews } = useQuery<(FunctioneringReview & { userName?: string })[]>({
+    queryKey: ["/api/functionering", selectedYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/functionering?year=${selectedYear}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Ophalen mislukt");
+      return res.json();
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: myReviews } = useQuery<FunctioneringReview[]>({
+    queryKey: ["/api/functionering/mine"],
+    enabled: !isAdmin,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      await apiRequest("POST", "/api/functionering", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/functionering"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/functionering/mine"] });
+      toast({ title: "Functioneringsgesprek opgeslagen" });
+    },
+    onError: () => {
+      toast({ title: "Opslaan mislukt", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/functionering/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/functionering"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/functionering/mine"] });
+      toast({ title: "Functioneringsgesprek verwijderd" });
+    },
+    onError: () => {
+      toast({ title: "Verwijderen mislukt", variant: "destructive" });
+    },
   });
 
   const updateField = (field: string, value: string) => {
@@ -68,6 +120,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
   const handleSelectEmployee = (userId: string) => {
     const emp = users?.find(u => u.id === userId);
     if (emp) {
+      setSelectedUserId(userId);
       setFormData(prev => ({
         ...prev,
         medewerker: emp.fullName,
@@ -77,14 +130,176 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
     }
   };
 
+  const handleSave = () => {
+    if (!formData.medewerker) {
+      toast({ title: "Selecteer eerst een medewerker", variant: "destructive" });
+      return;
+    }
+    const userId = selectedUserId || currentUser?.id;
+    if (!userId) return;
+
+    const year = new Date(formData.datum).getFullYear();
+    saveMutation.mutate({
+      ...formData,
+      userId,
+      year,
+      createdBy: currentUser?.id,
+    });
+  };
+
+  const handleViewReview = (review: FunctioneringReview) => {
+    setViewingReview(review);
+    setFormData({
+      medewerker: review.medewerker,
+      functie: review.functie || "",
+      afdeling: review.afdeling || "",
+      leidinggevende: review.leidinggevende || "",
+      datum: review.datum,
+      periode: review.periode || "",
+      terugblikTaken: review.terugblikTaken || "",
+      terugblikResultaten: review.terugblikResultaten || "",
+      terugblikKnelpunten: review.terugblikKnelpunten || "",
+      werkinhoud: review.werkinhoud || "",
+      samenwerking: review.samenwerking || "",
+      communicatie: review.communicatie || "",
+      leidinggeven: review.leidinggeven || "",
+      arbeidsomstandigheden: review.arbeidsomstandigheden || "",
+      persoonlijkeOntwikkeling: review.persoonlijkeOntwikkeling || "",
+      scholingswensen: review.scholingswensen || "",
+      loopbaanwensen: review.loopbaanwensen || "",
+      doelstelling1: review.doelstelling1 || "",
+      doelstelling1Termijn: review.doelstelling1Termijn || "",
+      doelstelling2: review.doelstelling2 || "",
+      doelstelling2Termijn: review.doelstelling2Termijn || "",
+      doelstelling3: review.doelstelling3 || "",
+      doelstelling3Termijn: review.doelstelling3Termijn || "",
+      afspraken: review.afspraken || "",
+      opmerkingMedewerker: review.opmerkingMedewerker || "",
+      opmerkingLeidinggevende: review.opmerkingLeidinggevende || "",
+    });
+    setSelectedUserId(review.userId);
+    setViewMode("form");
+  };
+
+  const handleNewForm = () => {
+    setFormData(emptyForm);
+    setSelectedUserId("");
+    setViewingReview(null);
+    setViewMode("form");
+  };
+
+  const handleBackToOverview = () => {
+    setViewMode("overview");
+    setViewingReview(null);
+    setFormData(emptyForm);
+    setSelectedUserId("");
+  };
+
+  const reviewsToShow = isAdmin ? reviewsByYear : myReviews;
+
+  if (viewMode === "overview") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" onClick={() => setSelectedYear(y => y - 1)} data-testid="button-year-prev">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-lg font-semibold min-w-[60px] text-center" data-testid="text-selected-year">{selectedYear}</span>
+            <Button variant="outline" size="icon" onClick={() => setSelectedYear(y => y + 1)} data-testid="button-year-next">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          {isAdmin && (
+            <Button onClick={handleNewForm} data-testid="button-new-functionering">
+              <Plus className="h-4 w-4 mr-2" />
+              Nieuw Gesprek
+            </Button>
+          )}
+        </div>
+
+        {loadingReviews ? (
+          <div className="space-y-3">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+        ) : !reviewsToShow || reviewsToShow.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center py-10">
+              <FileText className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-muted-foreground text-sm">Geen functioneringsgesprekken gevonden voor {selectedYear}</p>
+              {isAdmin && (
+                <Button variant="link" onClick={handleNewForm} className="mt-2" data-testid="button-new-functionering-empty">
+                  Nieuw gesprek aanmaken
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {reviewsToShow.map((review) => (
+              <Card key={review.id} className="border border-border/60" data-testid={`review-card-${review.id}`}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                      <ClipboardCheck className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium" data-testid={`review-name-${review.id}`}>
+                        {review.medewerker}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{review.functie}</span>
+                        {review.afdeling && <span>- {review.afdeling}</span>}
+                        <span>- {format(new Date(review.datum), "d MMM yyyy", { locale: nl })}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleViewReview(review)} data-testid={`button-view-review-${review.id}`}>
+                      <Eye className="h-4 w-4 mr-1" />
+                      Bekijken
+                    </Button>
+                    {isAdmin && (
+                      <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate(review.id)} data-testid={`button-delete-review-${review.id}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between print:hidden">
-        <p className="text-sm text-muted-foreground">Vul het formulier in en druk af voor ondertekening</p>
-        <Button onClick={handlePrint} variant="outline" data-testid="button-print-functionering">
-          <Printer className="h-4 w-4 mr-2" />
-          Afdrukken
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button variant="ghost" size="sm" onClick={handleBackToOverview} data-testid="button-back-overview">
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Overzicht
+            </Button>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {viewingReview ? "Bekijk of bewerk het functioneringsgesprek" : "Vul het formulier in en sla op"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="button-save-functionering">
+            <Save className="h-4 w-4 mr-2" />
+            {saveMutation.isPending ? "Opslaan..." : "Opslaan"}
+          </Button>
+          <Button onClick={handlePrint} variant="outline" data-testid="button-print-functionering">
+            <Printer className="h-4 w-4 mr-2" />
+            Afdrukken
+          </Button>
+        </div>
       </div>
 
       <div id="functionering-form" className="space-y-6 print:space-y-4">
@@ -100,7 +315,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:gap-2">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground print:text-black">Medewerker</label>
-                {(currentUser?.role === "admin" || currentUser?.role === "manager") ? (
+                {isAdmin ? (
                   <div className="flex gap-2">
                     <Input
                       value={formData.medewerker}
@@ -109,7 +324,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
                       className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
                       data-testid="input-func-medewerker"
                     />
-                    <Select onValueChange={handleSelectEmployee}>
+                    <Select onValueChange={handleSelectEmployee} value={selectedUserId}>
                       <SelectTrigger className="w-[140px] print:hidden" data-testid="select-func-employee">
                         <SelectValue placeholder="Kies..." />
                       </SelectTrigger>
@@ -440,10 +655,14 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
         </Card>
       </div>
 
-      <div className="flex justify-end print:hidden">
-        <Button onClick={handlePrint} data-testid="button-print-functionering-bottom">
+      <div className="flex justify-end gap-2 print:hidden">
+        <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="button-save-functionering-bottom">
+          <Save className="h-4 w-4 mr-2" />
+          {saveMutation.isPending ? "Opslaan..." : "Opslaan"}
+        </Button>
+        <Button onClick={handlePrint} variant="outline" data-testid="button-print-functionering-bottom">
           <Printer className="h-4 w-4 mr-2" />
-          Formulier Afdrukken
+          Afdrukken
         </Button>
       </div>
     </div>
