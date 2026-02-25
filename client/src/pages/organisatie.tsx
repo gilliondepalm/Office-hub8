@@ -886,7 +886,6 @@ function CaoInfoTab() {
 }
 
 function WetgevingTab() {
-  const [viewingPdf, setViewingPdf] = useState<{ name: string; path: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -940,51 +939,6 @@ function WetgevingTab() {
     return <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}</div>;
   }
 
-  if (viewingPdf) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => setViewingPdf(null)} data-testid="button-back-legislation">
-              <ChevronRight className="h-4 w-4 rotate-180 mr-1" />
-              Terug
-            </Button>
-            <h3 className="font-semibold text-lg">{viewingPdf.name.replace(/\.pdf$/i, "")}</h3>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(viewingPdf.path, "_blank")}
-            data-testid="button-open-pdf-newtab"
-          >
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Openen in nieuw tabblad
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="p-0">
-            <object
-              data={viewingPdf.path}
-              type="application/pdf"
-              className="w-full rounded-lg"
-              style={{ height: "80vh" }}
-              data-testid="object-legislation-pdf"
-            >
-              <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <FileText className="h-16 w-16 text-muted-foreground" />
-                <p className="text-muted-foreground">PDF kan niet inline worden weergegeven</p>
-                <Button onClick={() => window.open(viewingPdf.path, "_blank")} data-testid="button-fallback-open-pdf">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  PDF Openen
-                </Button>
-              </div>
-            </object>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {isAdmin && (
@@ -1033,7 +987,7 @@ function WetgevingTab() {
                 <div
                   key={file.name}
                   className="flex items-center justify-between gap-3 p-2.5 rounded-md group hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => setViewingPdf({ name: file.name, path: file.path })}
+                  onClick={() => window.open(file.path, "_blank")}
                   data-testid={`legislation-file-${file.name}`}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
