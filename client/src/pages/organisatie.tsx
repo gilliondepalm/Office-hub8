@@ -979,7 +979,7 @@ function WetgevingTab() {
         <Card>
           <CardContent className="p-0">
             <iframe
-              src={viewingPdf.pdfUrl || ""}
+              src={viewingPdf.pdfUrl || viewingPdf.url || ""}
               className="w-full border-0 rounded-lg"
               style={{ height: "80vh" }}
               title={viewingPdf.title}
@@ -1121,7 +1121,9 @@ function WetgevingTab() {
                           setViewingPdf(link);
                         } else if (link.url) {
                           const url = link.url;
-                          if (url.startsWith("file:///") || url.startsWith("\\\\") || /^[A-Za-z]:\\/.test(url)) {
+                          if (url.startsWith("/PDF/") || url.startsWith("/uploads/")) {
+                            setViewingPdf(link);
+                          } else if (url.startsWith("file:///") || url.startsWith("\\\\") || /^[A-Za-z]:\\/.test(url)) {
                             const filePath = url.startsWith("file:///") ? url : "file:///" + url.replace(/\\/g, "/");
                             window.open(filePath, "_blank");
                           } else {

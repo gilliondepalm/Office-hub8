@@ -107,6 +107,8 @@ export async function registerRoutes(
 
   const express = await import("express");
 
+  app.use("/PDF", express.default.static(path.join(process.cwd(), "PDF")));
+
   app.get("/uploads/public/:filename", (req, res) => {
     const filename = req.params.filename.replace(/[^a-zA-Z0-9._-]/g, "");
     const filePath = path.join(uploadsDir, filename);
