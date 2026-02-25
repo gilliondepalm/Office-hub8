@@ -18,13 +18,437 @@ import {
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
-import { Plus, Award, Star, TrendingUp, ClipboardCheck, UserCheck, Gift } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Award, Star, TrendingUp, ClipboardCheck, UserCheck, Gift, Printer } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import type { Reward, User } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+
+function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser?: User | null }) {
+  const [formData, setFormData] = useState({
+    medewerker: "",
+    functie: "",
+    afdeling: "",
+    leidinggevende: "",
+    datum: format(new Date(), "yyyy-MM-dd"),
+    periode: "",
+    terugblikTaken: "",
+    terugblikResultaten: "",
+    terugblikKnelpunten: "",
+    werkinhoud: "",
+    werkbelasting: "",
+    samenwerking: "",
+    communicatie: "",
+    leidinggeven: "",
+    arbeidsomstandigheden: "",
+    persoonlijkeOntwikkeling: "",
+    scholingswensen: "",
+    loopbaanwensen: "",
+    doelstelling1: "",
+    doelstelling1Termijn: "",
+    doelstelling2: "",
+    doelstelling2Termijn: "",
+    doelstelling3: "",
+    doelstelling3Termijn: "",
+    afspraken: "",
+    opmerkingMedewerker: "",
+    opmerkingLeidinggevende: "",
+  });
+
+  const updateField = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleSelectEmployee = (userId: string) => {
+    const emp = users?.find(u => u.id === userId);
+    if (emp) {
+      setFormData(prev => ({
+        ...prev,
+        medewerker: emp.fullName,
+        functie: emp.role === "admin" ? "Beheerder" : emp.role === "manager" ? "Manager" : "Medewerker",
+        afdeling: emp.department || "",
+      }));
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between print:hidden">
+        <p className="text-sm text-muted-foreground">Vul het formulier in en druk af voor ondertekening</p>
+        <Button onClick={handlePrint} variant="outline" data-testid="button-print-functionering">
+          <Printer className="h-4 w-4 mr-2" />
+          Afdrukken
+        </Button>
+      </div>
+
+      <div id="functionering-form" className="space-y-6 print:space-y-4">
+        <Card className="border border-border/60 print:border print:shadow-none">
+          <CardContent className="p-6 print:p-4">
+            <h2 className="text-lg font-bold text-center mb-1 print:text-xl" data-testid="text-functionering-title">
+              GESPREKSFORMULIER FUNCTIONERINGSGESPREK
+            </h2>
+            <p className="text-xs text-muted-foreground text-center mb-6 print:text-sm print:text-black">
+              Vertrouwelijk
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Medewerker</label>
+                {(currentUser?.role === "admin" || currentUser?.role === "manager") ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={formData.medewerker}
+                      onChange={(e) => updateField("medewerker", e.target.value)}
+                      placeholder="Naam medewerker"
+                      className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                      data-testid="input-func-medewerker"
+                    />
+                    <Select onValueChange={handleSelectEmployee}>
+                      <SelectTrigger className="w-[140px] print:hidden" data-testid="select-func-employee">
+                        <SelectValue placeholder="Kies..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users?.filter(u => u.active).map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <Input
+                    value={formData.medewerker}
+                    onChange={(e) => updateField("medewerker", e.target.value)}
+                    placeholder="Naam medewerker"
+                    className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                    data-testid="input-func-medewerker"
+                  />
+                )}
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Functie</label>
+                <Input
+                  value={formData.functie}
+                  onChange={(e) => updateField("functie", e.target.value)}
+                  placeholder="Functie"
+                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                  data-testid="input-func-functie"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Afdeling</label>
+                <Input
+                  value={formData.afdeling}
+                  onChange={(e) => updateField("afdeling", e.target.value)}
+                  placeholder="Afdeling"
+                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                  data-testid="input-func-afdeling"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Leidinggevende</label>
+                <Input
+                  value={formData.leidinggevende}
+                  onChange={(e) => updateField("leidinggevende", e.target.value)}
+                  placeholder="Naam leidinggevende"
+                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                  data-testid="input-func-leidinggevende"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Datum gesprek</label>
+                <Input
+                  type="date"
+                  value={formData.datum}
+                  onChange={(e) => updateField("datum", e.target.value)}
+                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                  data-testid="input-func-datum"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelingsperiode</label>
+                <Input
+                  value={formData.periode}
+                  onChange={(e) => updateField("periode", e.target.value)}
+                  placeholder="bijv. jan 2025 - dec 2025"
+                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                  data-testid="input-func-periode"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-4 print:space-y-2">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">1. Terugblik vorige periode</h3>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Welke taken/werkzaamheden zijn uitgevoerd?</label>
+              <Textarea
+                value={formData.terugblikTaken}
+                onChange={(e) => updateField("terugblikTaken", e.target.value)}
+                rows={3}
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-terugblik-taken"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Welke resultaten zijn behaald?</label>
+              <Textarea
+                value={formData.terugblikResultaten}
+                onChange={(e) => updateField("terugblikResultaten", e.target.value)}
+                rows={3}
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-terugblik-resultaten"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Welke knelpunten zijn er ervaren?</label>
+              <Textarea
+                value={formData.terugblikKnelpunten}
+                onChange={(e) => updateField("terugblikKnelpunten", e.target.value)}
+                rows={3}
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-terugblik-knelpunten"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-4 print:space-y-2">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">2. Werk en werkomstandigheden</h3>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Werkinhoud en takenpakket</label>
+              <Textarea
+                value={formData.werkinhoud}
+                onChange={(e) => updateField("werkinhoud", e.target.value)}
+                rows={3}
+                placeholder="Hoe ervaart u uw huidige takenpakket?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-werkinhoud"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Werkbelasting</label>
+              <Textarea
+                value={formData.werkbelasting}
+                onChange={(e) => updateField("werkbelasting", e.target.value)}
+                rows={2}
+                placeholder="Is de werkbelasting passend?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-werkbelasting"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Arbeidsomstandigheden</label>
+              <Textarea
+                value={formData.arbeidsomstandigheden}
+                onChange={(e) => updateField("arbeidsomstandigheden", e.target.value)}
+                rows={2}
+                placeholder="Hoe ervaart u de werkomgeving en faciliteiten?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-arbeidsomstandigheden"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-4 print:space-y-2">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">3. Samenwerking en communicatie</h3>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Samenwerking met collega's</label>
+              <Textarea
+                value={formData.samenwerking}
+                onChange={(e) => updateField("samenwerking", e.target.value)}
+                rows={3}
+                placeholder="Hoe verloopt de samenwerking binnen en buiten de afdeling?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-samenwerking"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Communicatie</label>
+              <Textarea
+                value={formData.communicatie}
+                onChange={(e) => updateField("communicatie", e.target.value)}
+                rows={2}
+                placeholder="Hoe ervaart u de communicatie met leidinggevende en collega's?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-communicatie"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Leidinggeven (indien van toepassing)</label>
+              <Textarea
+                value={formData.leidinggeven}
+                onChange={(e) => updateField("leidinggeven", e.target.value)}
+                rows={2}
+                placeholder="Hoe ervaart u de stijl van leidinggeven?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-leidinggeven"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-4 print:space-y-2">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">4. Persoonlijke ontwikkeling</h3>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Persoonlijke ontwikkeling en competenties</label>
+              <Textarea
+                value={formData.persoonlijkeOntwikkeling}
+                onChange={(e) => updateField("persoonlijkeOntwikkeling", e.target.value)}
+                rows={3}
+                placeholder="Welke competenties wilt u verder ontwikkelen?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-persoonlijke-ontwikkeling"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Scholings- en opleidingswensen</label>
+              <Textarea
+                value={formData.scholingswensen}
+                onChange={(e) => updateField("scholingswensen", e.target.value)}
+                rows={2}
+                placeholder="Welke cursussen of opleidingen heeft u nodig?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-scholingswensen"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Loopbaanwensen</label>
+              <Textarea
+                value={formData.loopbaanwensen}
+                onChange={(e) => updateField("loopbaanwensen", e.target.value)}
+                rows={2}
+                placeholder="Wat zijn uw loopbaanwensen en ambities?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-loopbaanwensen"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-4 print:space-y-2">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">5. Doelstellingen komende periode</h3>
+            <div className="space-y-3 print:space-y-2">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-2 items-start">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground print:text-black">Doelstelling {n}</label>
+                    <Textarea
+                      value={(formData as any)[`doelstelling${n}`]}
+                      onChange={(e) => updateField(`doelstelling${n}`, e.target.value)}
+                      rows={2}
+                      placeholder={`Omschrijving doelstelling ${n}`}
+                      className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                      data-testid={`input-func-doelstelling-${n}`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground print:text-black">Termijn</label>
+                    <Input
+                      value={(formData as any)[`doelstelling${n}Termijn`]}
+                      onChange={(e) => updateField(`doelstelling${n}Termijn`, e.target.value)}
+                      placeholder="bijv. Q2 2026"
+                      className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                      data-testid={`input-func-termijn-${n}`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-4 print:space-y-2">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">6. Afspraken en opmerkingen</h3>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Gemaakte afspraken</label>
+              <Textarea
+                value={formData.afspraken}
+                onChange={(e) => updateField("afspraken", e.target.value)}
+                rows={3}
+                placeholder="Welke concrete afspraken zijn er gemaakt?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-afspraken"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Opmerkingen medewerker</label>
+              <Textarea
+                value={formData.opmerkingMedewerker}
+                onChange={(e) => updateField("opmerkingMedewerker", e.target.value)}
+                rows={2}
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-opmerking-medewerker"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Opmerkingen leidinggevende</label>
+              <Textarea
+                value={formData.opmerkingLeidinggevende}
+                onChange={(e) => updateField("opmerkingLeidinggevende", e.target.value)}
+                rows={2}
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-func-opmerking-leidinggevende"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-6 print:space-y-4">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">7. Ondertekening</h3>
+            <p className="text-xs text-muted-foreground print:text-black">
+              Beide partijen verklaren dat dit gesprek heeft plaatsgevonden en dat de inhoud van dit formulier een correcte weergave is van het besprokene.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-8 print:space-y-12">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground print:text-black mb-1">Datum</p>
+                  <div className="border-b border-dashed h-6 print:h-8"></div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground print:text-black mb-1">Handtekening medewerker</p>
+                  <div className="border-b border-dashed h-12 print:h-16"></div>
+                </div>
+              </div>
+              <div className="space-y-8 print:space-y-12">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground print:text-black mb-1">Datum</p>
+                  <div className="border-b border-dashed h-6 print:h-8"></div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground print:text-black mb-1">Handtekening leidinggevende</p>
+                  <div className="border-b border-dashed h-12 print:h-16"></div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex justify-end print:hidden">
+        <Button onClick={handlePrint} data-testid="button-print-functionering-bottom">
+          <Printer className="h-4 w-4 mr-2" />
+          Formulier Afdrukken
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 const rewardFormSchema = z.object({
   userId: z.string().min(1, "Selecteer een medewerker"),
@@ -188,12 +612,7 @@ export default function BeloningenPage() {
       </div>
 
       {activeTab === "functionering" && (
-        <Card>
-          <CardContent className="flex flex-col items-center py-10">
-            <ClipboardCheck className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground text-sm">Functioneringsgesprekken — binnenkort beschikbaar</p>
-          </CardContent>
-        </Card>
+        <FunctioneringForm users={users} currentUser={user} />
       )}
 
       {activeTab === "beoordeling" && (

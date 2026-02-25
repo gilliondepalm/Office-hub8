@@ -290,3 +290,50 @@
     inset: -1px;
   }
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  nav, header, .print\\:hidden,
+  [data-testid="app-sidebar"],
+  .sidebar-wrapper {
+    display: none !important;
+  }
+
+  main, .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .print\\:border {
+    border: 1px solid #ddd !important;
+  }
+
+  .print\\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  textarea, input {
+    border: none !important;
+    border-bottom: 1px solid #999 !important;
+    border-radius: 0 !important;
+    padding-left: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    resize: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+}
