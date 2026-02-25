@@ -153,13 +153,25 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground print:text-black">Leidinggevende</label>
-                <Input
-                  value={formData.leidinggevende}
-                  onChange={(e) => updateField("leidinggevende", e.target.value)}
-                  placeholder="Naam leidinggevende"
-                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
-                  data-testid="input-func-leidinggevende"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={formData.leidinggevende}
+                    onChange={(e) => updateField("leidinggevende", e.target.value)}
+                    placeholder="Naam leidinggevende"
+                    className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                    data-testid="input-func-leidinggevende"
+                  />
+                  <Select onValueChange={(val) => { const mgr = users?.find(u => u.id === val); if (mgr) updateField("leidinggevende", mgr.fullName); }}>
+                    <SelectTrigger className="w-[140px] print:hidden" data-testid="select-func-leidinggevende">
+                      <SelectValue placeholder="Kies..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users?.filter(u => u.active && (u.role === "manager" || u.role === "admin")).map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground print:text-black">Datum gesprek</label>
