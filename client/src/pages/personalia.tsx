@@ -39,6 +39,7 @@ const userFormSchema = z.object({
   department: z.string().optional(),
   startDate: z.string().min(1, "Datum in dienst is verplicht"),
   birthDate: z.string().optional(),
+  phoneExtension: z.string().optional(),
 });
 
 const editFormSchema = z.object({
@@ -50,6 +51,7 @@ const editFormSchema = z.object({
   department: z.string().optional(),
   startDate: z.string().min(1, "Datum in dienst is verplicht"),
   birthDate: z.string().optional(),
+  phoneExtension: z.string().optional(),
 });
 
 const deactivateFormSchema = z.object({
@@ -79,6 +81,7 @@ function EditDialog({
       department: user.department || "",
       startDate: user.startDate || "",
       birthDate: user.birthDate || "",
+      phoneExtension: user.phoneExtension || "",
     },
   });
 
@@ -92,6 +95,7 @@ function EditDialog({
         department: data.department || null,
         startDate: data.startDate,
         birthDate: data.birthDate || null,
+        phoneExtension: data.phoneExtension || null,
       };
       if (data.password && data.password.length > 0) {
         payload.password = data.password;
@@ -198,6 +202,13 @@ function EditDialog({
                 </FormItem>
               )} />
             </div>
+            <FormField control={form.control} name="phoneExtension" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Toestelnummer</FormLabel>
+                <FormControl><Input {...field} placeholder="bijv. 101" data-testid="input-edit-phone-extension" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
             <Button type="submit" className="w-full" disabled={mutation.isPending} data-testid="button-save-edit">
               {mutation.isPending ? "Opslaan..." : "Wijzigingen Opslaan"}
             </Button>
@@ -909,7 +920,7 @@ export default function PersonaliaPage() {
       username: "", password: "", fullName: "", email: "",
       role: "employee", department: "",
       startDate: new Date().toISOString().split("T")[0],
-      birthDate: "",
+      birthDate: "", phoneExtension: "",
     },
   });
 
@@ -919,6 +930,7 @@ export default function PersonaliaPage() {
         ...data,
         department: data.department || null,
         birthDate: data.birthDate || null,
+        phoneExtension: data.phoneExtension || null,
         avatar: null,
         active: true,
         endDate: null,
@@ -1071,6 +1083,13 @@ export default function PersonaliaPage() {
                       </FormItem>
                     )} />
                   </div>
+                  <FormField control={createForm.control} name="phoneExtension" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Toestelnummer</FormLabel>
+                      <FormControl><Input {...field} placeholder="bijv. 101" data-testid="input-user-phone-extension" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-user">
                     {createMutation.isPending ? "Opslaan..." : "Medewerker Opslaan"}
                   </Button>
@@ -1167,6 +1186,7 @@ export default function PersonaliaPage() {
                             <TableRow>
                               <TableHead>Medewerker</TableHead>
                               <TableHead>E-mail</TableHead>
+                              <TableHead>Toestel</TableHead>
                               <TableHead>Rol</TableHead>
                               <TableHead>Geboortedatum</TableHead>
                               <TableHead>In Dienst</TableHead>
@@ -1195,6 +1215,11 @@ export default function PersonaliaPage() {
                                     <span className="flex items-center gap-1 text-sm text-muted-foreground">
                                       <Mail className="h-3 w-3" />
                                       {u.email}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="text-sm text-muted-foreground" data-testid={`text-phone-ext-${u.id}`}>
+                                      {u.phoneExtension || "-"}
                                     </span>
                                   </TableCell>
                                   <TableCell>
