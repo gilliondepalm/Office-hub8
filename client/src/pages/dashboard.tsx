@@ -278,16 +278,39 @@ export default function DashboardPage() {
               <Badge variant="secondary" className="text-xs">{isAdmin ? pendingAbsences.length : (absences?.length || 0)}</Badge>
             </CardHeader>
             <CardContent className="pt-0 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-border/60 p-3" data-testid="stat-sick-count">
-                  <p className="text-xs text-muted-foreground font-medium">Ziekte meldingen {currentYear}</p>
-                  <p className="text-2xl font-bold mt-1">{myBalance?.sickDays ?? 0}</p>
+              {isAdmin ? (() => {
+                const yearAbsences = (absences || []).filter(a => new Date(a.startDate).getFullYear() === currentYear);
+                const byCat: Record<string, number> = {};
+                yearAbsences.forEach(a => { byCat[a.type] = (byCat[a.type] || 0) + 1; });
+                const catLabels: Record<string, string> = { sick: "Ziekte", vacation: "Vakantie", personal: "Persoonlijk", bvvd: "Bijzonder verlof", other: "Overig" };
+                const catOrder = ["sick", "vacation", "bvvd", "personal", "other"];
+                const cats = catOrder.filter(c => byCat[c]);
+                return (
+                  <div className="grid grid-cols-2 gap-2" data-testid="admin-absence-overview">
+                    <div className="rounded-lg border border-border/60 p-3 col-span-2">
+                      <p className="text-xs text-muted-foreground font-medium">Totaal meldingen {currentYear}</p>
+                      <p className="text-2xl font-bold mt-1">{yearAbsences.length}</p>
+                    </div>
+                    {cats.map(cat => (
+                      <div key={cat} className="rounded-lg border border-border/60 p-2.5" data-testid={`stat-cat-${cat}`}>
+                        <p className="text-xs text-muted-foreground font-medium">{catLabels[cat]}</p>
+                        <p className="text-lg font-bold mt-0.5">{byCat[cat]}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })() : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/60 p-3" data-testid="stat-sick-count">
+                    <p className="text-xs text-muted-foreground font-medium">Ziekte meldingen {currentYear}</p>
+                    <p className="text-2xl font-bold mt-1">{myBalance?.sickDays ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 p-3" data-testid="stat-vacation-balance">
+                    <p className="text-xs text-muted-foreground font-medium">Saldo vakantiedagen {currentYear}</p>
+                    <p className="text-2xl font-bold mt-1">{myBalance?.remainingDays ?? 0} <span className="text-sm font-normal text-muted-foreground">/ {myBalance?.totalDays ?? 0}</span></p>
+                  </div>
                 </div>
-                <div className="rounded-lg border border-border/60 p-3" data-testid="stat-vacation-balance">
-                  <p className="text-xs text-muted-foreground font-medium">Saldo vakantiedagen {currentYear}</p>
-                  <p className="text-2xl font-bold mt-1">{myBalance?.remainingDays ?? 0} <span className="text-sm font-normal text-muted-foreground">/ {myBalance?.totalDays ?? 0}</span></p>
-                </div>
-              </div>
+              )}
               {(isAdmin ? pendingAbsences : absences || []).length === 0 ? (
                 <div className="flex flex-col items-center py-6 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-3">
