@@ -25,8 +25,13 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+const aankondigingenDir = path.join(uploadsDir, "Aankondigingen");
+if (!fs.existsSync(aankondigingenDir)) {
+  fs.mkdirSync(aankondigingenDir, { recursive: true });
+}
+
 const pdfStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  destination: (_req, _file, cb) => cb(null, aankondigingenDir),
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + "-" + file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_"));
@@ -138,7 +143,7 @@ export async function registerRoutes(
     if (!req.file) {
       return res.status(400).json({ message: "Geen PDF-bestand ontvangen" });
     }
-    const pdfUrl = `/uploads/${req.file.filename}`;
+    const pdfUrl = `/uploads/Aankondigingen/${req.file.filename}`;
     res.json({ pdfUrl });
   });
 
