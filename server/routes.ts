@@ -15,6 +15,7 @@ import {
   insertAoProcedureSchema, insertAoInstructionSchema, insertPositionHistorySchema,
   insertPersonalDevelopmentSchema, insertLegislationLinkSchema, insertCaoDocumentSchema,
   insertFunctioneringReviewSchema,
+  insertCompetencySchema, insertBeoordelingReviewSchema, insertBeoordelingScoreSchema,
 } from "@shared/schema";
 
 const PgStore = pgSession(session);
@@ -848,6 +849,106 @@ export async function registerRoutes(
 
   app.delete("/api/functionering/:id", requireAuth, async (req, res) => {
     await storage.deleteFunctioneringReview(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/competencies/:userId", requireAuth, async (req, res) => {
+    const comps = await storage.getCompetenciesByUser(req.params.userId);
+    res.json(comps);
+  });
+
+  app.post("/api/competencies", requireAuth, async (req, res) => {
+    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      const parsed = insertCompetencySchema.parse(req.body);
+      const comp = await storage.createCompetency(parsed);
+      res.json(comp);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Validatiefout" });
+    }
+  });
+
+  app.put("/api/competencies/:id", requireAuth, async (req, res) => {
+    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      const updated = await storage.updateCompetency(req.params.id, req.body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Bijwerken mislukt" });
+    }
+  });
+
+  app.delete("/api/competencies/:id", requireAuth, async (req, res) => {
+    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    await storage.deleteCompetency(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/beoordeling", requireAuth, async (req, res) => {
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    if (year) {
+      const reviews = await storage.getBeoordelingReviewsByYear(year);
+      res.json(reviews);
+    } else {
+      const reviews = await storage.getBeoordelingReviews();
+      res.json(reviews);
+    }
+  });
+
+  app.get("/api/beoordeling/mine", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const reviews = await storage.getBeoordelingReviewsByUser(userId);
+    res.json(reviews);
+  });
+
+  app.get("/api/beoordeling/:id/scores", requireAuth, async (req, res) => {
+    const scores = await storage.getBeoordelingScoresByReview(req.params.id);
+    res.json(scores);
+  });
+
+  app.post("/api/beoordeling", requireAuth, async (req, res) => {
+    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      const { scores, ...reviewData } = req.body;
+      const parsed = insertBeoordelingReviewSchema.parse(reviewData);
+      const existing = await storage.getBeoordelingReviewByUserAndYear(parsed.userId, parsed.year);
+      let review;
+      if (existing) {
+        review = await storage.updateBeoordelingReview(existing.id, parsed);
+        await storage.deleteBeoordelingScoresByReview(existing.id);
+      } else {
+        review = await storage.createBeoordelingReview(parsed);
+      }
+      if (scores && Array.isArray(scores)) {
+        for (const s of scores) {
+          await storage.createBeoordelingScore({
+            reviewId: review.id,
+            competencyId: s.competencyId,
+            score: s.score,
+            toelichting: s.toelichting || null,
+          });
+        }
+      }
+      const savedScores = await storage.getBeoordelingScoresByReview(review.id);
+      res.json({ ...review, scores: savedScores });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Validatiefout" });
+    }
+  });
+
+  app.delete("/api/beoordeling/:id", requireAuth, async (req, res) => {
+    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    await storage.deleteBeoordelingReview(req.params.id);
     res.json({ success: true });
   });
 

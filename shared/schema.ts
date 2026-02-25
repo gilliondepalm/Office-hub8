@@ -191,6 +191,46 @@ export const functioneringReviews = pgTable("functionering_reviews", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const competencies = pgTable("competencies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  norm1: text("norm_1").notNull(),
+  norm2: text("norm_2").notNull(),
+  norm3: text("norm_3").notNull(),
+  norm4: text("norm_4").notNull(),
+  norm5: text("norm_5").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdBy: varchar("created_by").references(() => users.id),
+});
+
+export const beoordelingReviews = pgTable("beoordeling_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  year: integer("year").notNull(),
+  medewerker: text("medewerker").notNull(),
+  functie: text("functie"),
+  afdeling: text("afdeling"),
+  beoordelaar: text("beoordelaar"),
+  datum: date("datum").notNull(),
+  periode: text("periode"),
+  totalScore: text("total_score"),
+  afspraken: text("afspraken"),
+  opmerkingMedewerker: text("opmerking_medewerker"),
+  opmerkingBeoordelaar: text("opmerking_beoordelaar"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const beoordelingScores = pgTable("beoordeling_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reviewId: varchar("review_id").references(() => beoordelingReviews.id).notNull(),
+  competencyId: varchar("competency_id").references(() => competencies.id).notNull(),
+  score: integer("score"),
+  toelichting: text("toelichting"),
+});
+
 export const siteSettings = pgTable("site_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
@@ -213,6 +253,9 @@ export const insertPersonalDevelopmentSchema = createInsertSchema(personalDevelo
 export const insertLegislationLinkSchema = createInsertSchema(legislationLinks).omit({ id: true });
 export const insertCaoDocumentSchema = createInsertSchema(caoDocuments).omit({ id: true });
 export const insertFunctioneringReviewSchema = createInsertSchema(functioneringReviews).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCompetencySchema = createInsertSchema(competencies).omit({ id: true });
+export const insertBeoordelingReviewSchema = createInsertSchema(beoordelingReviews).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBeoordelingScoreSchema = createInsertSchema(beoordelingScores).omit({ id: true });
 
 export const loginSchema = z.object({
   username: z.string().min(1, "Gebruikersnaam is verplicht"),
@@ -251,3 +294,9 @@ export type InsertCaoDocument = z.infer<typeof insertCaoDocumentSchema>;
 export type CaoDocument = typeof caoDocuments.$inferSelect;
 export type InsertFunctioneringReview = z.infer<typeof insertFunctioneringReviewSchema>;
 export type FunctioneringReview = typeof functioneringReviews.$inferSelect;
+export type InsertCompetency = z.infer<typeof insertCompetencySchema>;
+export type Competency = typeof competencies.$inferSelect;
+export type InsertBeoordelingReview = z.infer<typeof insertBeoordelingReviewSchema>;
+export type BeoordelingReview = typeof beoordelingReviews.$inferSelect;
+export type InsertBeoordelingScore = z.infer<typeof insertBeoordelingScoreSchema>;
+export type BeoordelingScore = typeof beoordelingScores.$inferSelect;

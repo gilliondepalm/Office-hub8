@@ -19,12 +19,12 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Award, Star, TrendingUp, ClipboardCheck, UserCheck, Gift, Printer, Save, ChevronLeft, ChevronRight, Eye, FileText, Trash2 } from "lucide-react";
+import { Plus, Award, Star, TrendingUp, ClipboardCheck, UserCheck, Gift, Printer, Save, ChevronLeft, ChevronRight, Eye, FileText, Trash2, Settings, PlusCircle, X } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Reward, User, FunctioneringReview } from "@shared/schema";
+import type { Reward, User, FunctioneringReview, Competency, BeoordelingReview, BeoordelingScore } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 
 function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser?: User | null }) {
@@ -669,6 +669,714 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
   );
 }
 
+function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUser?: User | null }) {
+  const { toast } = useToast();
+  const isAdmin = currentUser?.role === "admin" || currentUser?.role === "manager";
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"overview" | "form" | "competencies">(isAdmin ? "overview" : "overview");
+  const [viewingReview, setViewingReview] = useState<BeoordelingReview | null>(null);
+  const [competencyUserId, setCompetencyUserId] = useState<string>("");
+  const [newComp, setNewComp] = useState({ name: "", norm1: "", norm2: "", norm3: "", norm4: "", norm5: "" });
+  const [editingCompId, setEditingCompId] = useState<string | null>(null);
+  const [editComp, setEditComp] = useState({ name: "", norm1: "", norm2: "", norm3: "", norm4: "", norm5: "" });
+  const [formScores, setFormScores] = useState<Record<string, { score: number | null; toelichting: string }>>({});
+  const [formData, setFormData] = useState({
+    beoordelaar: "",
+    datum: format(new Date(), "yyyy-MM-dd"),
+    periode: "",
+    afspraken: "",
+    opmerkingMedewerker: "",
+    opmerkingBeoordelaar: "",
+    totalScore: "",
+  });
+
+  const { data: reviewsByYear, isLoading: loadingReviews } = useQuery<(BeoordelingReview & { userName?: string })[]>({
+    queryKey: ["/api/beoordeling", selectedYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/beoordeling?year=${selectedYear}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Ophalen mislukt");
+      return res.json();
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: myReviews } = useQuery<BeoordelingReview[]>({
+    queryKey: ["/api/beoordeling/mine"],
+    enabled: !isAdmin,
+  });
+
+  const { data: userCompetencies } = useQuery<Competency[]>({
+    queryKey: ["/api/competencies", selectedUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/competencies/${selectedUserId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Ophalen mislukt");
+      return res.json();
+    },
+    enabled: !!selectedUserId && viewMode === "form",
+  });
+
+  const { data: manageCompetencies } = useQuery<Competency[]>({
+    queryKey: ["/api/competencies", competencyUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/competencies/${competencyUserId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Ophalen mislukt");
+      return res.json();
+    },
+    enabled: !!competencyUserId && viewMode === "competencies",
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      await apiRequest("POST", "/api/beoordeling", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/beoordeling"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/beoordeling/mine"] });
+      toast({ title: "Beoordeling opgeslagen" });
+    },
+    onError: () => {
+      toast({ title: "Opslaan mislukt", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/beoordeling/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/beoordeling"] });
+      toast({ title: "Beoordeling verwijderd" });
+    },
+  });
+
+  const createCompMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      await apiRequest("POST", "/api/competencies", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competencies", competencyUserId] });
+      setNewComp({ name: "", norm1: "", norm2: "", norm3: "", norm4: "", norm5: "" });
+      toast({ title: "Competentie toegevoegd" });
+    },
+    onError: () => {
+      toast({ title: "Toevoegen mislukt", variant: "destructive" });
+    },
+  });
+
+  const updateCompMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, any> }) => {
+      await apiRequest("PUT", `/api/competencies/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competencies", competencyUserId] });
+      setEditingCompId(null);
+      toast({ title: "Competentie bijgewerkt" });
+    },
+  });
+
+  const deleteCompMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/competencies/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competencies", competencyUserId] });
+      toast({ title: "Competentie verwijderd" });
+    },
+  });
+
+  const handleSelectEmployee = (userId: string) => {
+    setSelectedUserId(userId);
+    const emp = users?.find(u => u.id === userId);
+    if (emp) {
+      setFormScores({});
+    }
+  };
+
+  const handleSave = () => {
+    if (!selectedUserId) {
+      toast({ title: "Selecteer eerst een medewerker", variant: "destructive" });
+      return;
+    }
+    const emp = users?.find(u => u.id === selectedUserId);
+    const year = new Date(formData.datum).getFullYear();
+    const scores = Object.entries(formScores).map(([competencyId, data]) => ({
+      competencyId,
+      score: data.score,
+      toelichting: data.toelichting,
+    }));
+    saveMutation.mutate({
+      userId: selectedUserId,
+      year,
+      medewerker: emp?.fullName || "",
+      functie: emp?.role === "admin" ? "Beheerder" : emp?.role === "manager" ? "Manager" : "Medewerker",
+      afdeling: emp?.department || "",
+      beoordelaar: formData.beoordelaar,
+      datum: formData.datum,
+      periode: formData.periode,
+      totalScore: formData.totalScore,
+      afspraken: formData.afspraken,
+      opmerkingMedewerker: formData.opmerkingMedewerker,
+      opmerkingBeoordelaar: formData.opmerkingBeoordelaar,
+      createdBy: currentUser?.id,
+      scores,
+    });
+  };
+
+  const handleViewReview = async (review: BeoordelingReview) => {
+    setViewingReview(review);
+    setSelectedUserId(review.userId);
+    setFormData({
+      beoordelaar: review.beoordelaar || "",
+      datum: review.datum,
+      periode: review.periode || "",
+      afspraken: review.afspraken || "",
+      opmerkingMedewerker: review.opmerkingMedewerker || "",
+      opmerkingBeoordelaar: review.opmerkingBeoordelaar || "",
+      totalScore: review.totalScore || "",
+    });
+    try {
+      const res = await fetch(`/api/beoordeling/${review.id}/scores`, { credentials: "include" });
+      if (res.ok) {
+        const scores: (BeoordelingScore & { competencyName?: string })[] = await res.json();
+        const scoresMap: Record<string, { score: number | null; toelichting: string }> = {};
+        scores.forEach(s => {
+          scoresMap[s.competencyId] = { score: s.score, toelichting: s.toelichting || "" };
+        });
+        setFormScores(scoresMap);
+      }
+    } catch {}
+    setViewMode("form");
+  };
+
+  const handleNewForm = () => {
+    setFormData({ beoordelaar: "", datum: format(new Date(), "yyyy-MM-dd"), periode: "", afspraken: "", opmerkingMedewerker: "", opmerkingBeoordelaar: "", totalScore: "" });
+    setFormScores({});
+    setSelectedUserId("");
+    setViewingReview(null);
+    setViewMode("form");
+  };
+
+  const handleBackToOverview = () => {
+    setViewMode("overview");
+    setViewingReview(null);
+    setFormScores({});
+    setSelectedUserId("");
+  };
+
+  const scoreLabels: Record<number, string> = {
+    1: "Onvoldoende",
+    2: "Matig",
+    3: "Voldoende",
+    4: "Goed",
+    5: "Uitstekend",
+  };
+
+  const reviewsToShow = isAdmin ? reviewsByYear : myReviews;
+
+  if (viewMode === "competencies" && isAdmin) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleBackToOverview} data-testid="button-back-overview-comp">
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Overzicht
+            </Button>
+            <h3 className="font-semibold text-sm">Competenties beheren</h3>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground">Selecteer medewerker</label>
+          <Select onValueChange={(val) => setCompetencyUserId(val)} value={competencyUserId}>
+            <SelectTrigger data-testid="select-comp-user">
+              <SelectValue placeholder="Kies een medewerker..." />
+            </SelectTrigger>
+            <SelectContent>
+              {users?.filter(u => u.active).map(u => (
+                <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {competencyUserId && (
+          <>
+            {manageCompetencies && manageCompetencies.length > 0 && (
+              <div className="space-y-2">
+                {manageCompetencies.map((comp, i) => (
+                  <Card key={comp.id} className="border border-border/60" data-testid={`comp-card-${comp.id}`}>
+                    <CardContent className="p-4">
+                      {editingCompId === comp.id ? (
+                        <div className="space-y-3">
+                          <Input value={editComp.name} onChange={e => setEditComp(prev => ({ ...prev, name: e.target.value }))} placeholder="Naam competentie" data-testid="input-edit-comp-name" />
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <div key={n} className="flex items-start gap-2">
+                              <Badge variant="outline" className="mt-1 shrink-0 w-8 justify-center">{n}</Badge>
+                              <Input value={(editComp as any)[`norm${n}`]} onChange={e => setEditComp(prev => ({ ...prev, [`norm${n}`]: e.target.value }))} placeholder={`Normering ${n} - ${scoreLabels[n]}`} data-testid={`input-edit-norm-${n}`} />
+                            </div>
+                          ))}
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => updateCompMutation.mutate({ id: comp.id, data: editComp })} data-testid="button-save-edit-comp">Opslaan</Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingCompId(null)}>Annuleren</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm font-medium">{i + 1}. {comp.name}</p>
+                            <div className="mt-2 space-y-1">
+                              {[1, 2, 3, 4, 5].map(n => (
+                                <div key={n} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px]">{n}</Badge>
+                                  <span>{(comp as any)[`norm${n}`]}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              setEditingCompId(comp.id);
+                              setEditComp({ name: comp.name, norm1: comp.norm1, norm2: comp.norm2, norm3: comp.norm3, norm4: comp.norm4, norm5: comp.norm5 });
+                            }} data-testid={`button-edit-comp-${comp.id}`}>
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => deleteCompMutation.mutate(comp.id)} data-testid={`button-delete-comp-${comp.id}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            <Card className="border border-dashed border-border/60">
+              <CardContent className="p-4 space-y-3">
+                <h4 className="text-sm font-medium">Nieuwe competentie toevoegen</h4>
+                <Input value={newComp.name} onChange={e => setNewComp(prev => ({ ...prev, name: e.target.value }))} placeholder="Naam competentie (bijv. Leiderschap)" data-testid="input-new-comp-name" />
+                {[1, 2, 3, 4, 5].map(n => (
+                  <div key={n} className="flex items-start gap-2">
+                    <Badge variant="outline" className="mt-1 shrink-0 w-8 justify-center">{n}</Badge>
+                    <Input value={(newComp as any)[`norm${n}`]} onChange={e => setNewComp(prev => ({ ...prev, [`norm${n}`]: e.target.value }))} placeholder={`Normering ${n} - ${scoreLabels[n]}`} data-testid={`input-new-norm-${n}`} />
+                  </div>
+                ))}
+                <Button size="sm" onClick={() => {
+                  if (!newComp.name || !newComp.norm1 || !newComp.norm2 || !newComp.norm3 || !newComp.norm4 || !newComp.norm5) {
+                    toast({ title: "Vul alle velden in", variant: "destructive" });
+                    return;
+                  }
+                  createCompMutation.mutate({
+                    userId: competencyUserId,
+                    ...newComp,
+                    sortOrder: (manageCompetencies?.length || 0),
+                    createdBy: currentUser?.id,
+                  });
+                }} disabled={createCompMutation.isPending} data-testid="button-add-comp">
+                  <PlusCircle className="h-4 w-4 mr-1" />
+                  Toevoegen
+                </Button>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (viewMode === "overview") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <>
+                <Button variant="outline" size="icon" onClick={() => setSelectedYear(y => y - 1)} data-testid="button-beoor-year-prev">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-lg font-semibold min-w-[60px] text-center" data-testid="text-beoor-selected-year">{selectedYear}</span>
+                <Button variant="outline" size="icon" onClick={() => setSelectedYear(y => y + 1)} data-testid="button-beoor-year-next">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+          {isAdmin && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setViewMode("competencies")} data-testid="button-manage-competencies">
+                <Settings className="h-4 w-4 mr-2" />
+                Competenties
+              </Button>
+              <Button onClick={handleNewForm} data-testid="button-new-beoordeling">
+                <Plus className="h-4 w-4 mr-2" />
+                Nieuwe Beoordeling
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {loadingReviews ? (
+          <div className="space-y-3">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+        ) : !reviewsToShow || reviewsToShow.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center py-10">
+              <UserCheck className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-muted-foreground text-sm">
+                {isAdmin
+                  ? `Geen beoordelingen gevonden voor ${selectedYear}`
+                  : "U heeft nog geen beoordelingen ontvangen"}
+              </p>
+              {isAdmin && (
+                <Button variant="link" onClick={handleNewForm} className="mt-2">
+                  Nieuwe beoordeling aanmaken
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {reviewsToShow.map((review) => (
+              <Card key={review.id} className="border border-border/60" data-testid={`beoor-card-${review.id}`}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                      <UserCheck className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{review.medewerker}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{review.functie}</span>
+                        {review.afdeling && <span>- {review.afdeling}</span>}
+                        <span>- {format(new Date(review.datum), "d MMM yyyy", { locale: nl })}</span>
+                        {review.totalScore && <Badge variant="secondary" className="text-[10px]">{review.totalScore}</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleViewReview(review)} data-testid={`button-view-beoor-${review.id}`}>
+                      <Eye className="h-4 w-4 mr-1" />
+                      Bekijken
+                    </Button>
+                    {isAdmin && (
+                      <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate(review.id)} data-testid={`button-delete-beoor-${review.id}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const compList = userCompetencies || [];
+  const isReadOnly = !isAdmin;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between print:hidden">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={handleBackToOverview} data-testid="button-back-overview-beoor">
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Overzicht
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            {viewingReview ? "Bekijk of bewerk de beoordeling" : "Vul de beoordeling in"}
+          </p>
+        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="button-save-beoordeling">
+              <Save className="h-4 w-4 mr-2" />
+              {saveMutation.isPending ? "Opslaan..." : "Opslaan"}
+            </Button>
+            <Button onClick={() => window.print()} variant="outline" data-testid="button-print-beoordeling">
+              <Printer className="h-4 w-4 mr-2" />
+              Afdrukken
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div id="beoordeling-form" className="space-y-6 print:space-y-4">
+        <Card className="border border-border/60 print:border print:shadow-none">
+          <CardContent className="p-6 print:p-4">
+            <h2 className="text-lg font-bold text-center mb-1 print:text-xl" data-testid="text-beoordeling-title">
+              BEOORDELINGSFORMULIER
+            </h2>
+            <p className="text-xs text-muted-foreground text-center mb-6 print:text-sm print:text-black">
+              Vertrouwelijk
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:gap-2">
+              {isAdmin ? (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground print:text-black">Medewerker</label>
+                  <Select onValueChange={handleSelectEmployee} value={selectedUserId} disabled={isReadOnly}>
+                    <SelectTrigger data-testid="select-beoor-employee">
+                      <SelectValue placeholder="Kies een medewerker..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users?.filter(u => u.active).map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground print:text-black">Medewerker</label>
+                  <Input value={viewingReview?.medewerker || currentUser?.fullName || ""} readOnly className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none" />
+                </div>
+              )}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelaar</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={formData.beoordelaar}
+                    onChange={e => setFormData(prev => ({ ...prev, beoordelaar: e.target.value }))}
+                    placeholder="Naam beoordelaar"
+                    readOnly={isReadOnly}
+                    className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                    data-testid="input-beoor-beoordelaar"
+                  />
+                  {isAdmin && (
+                    <Select onValueChange={val => { const mgr = users?.find(u => u.id === val); if (mgr) setFormData(prev => ({ ...prev, beoordelaar: mgr.fullName })); }}>
+                      <SelectTrigger className="w-[140px] print:hidden" data-testid="select-beoor-beoordelaar">
+                        <SelectValue placeholder="Kies..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users?.filter(u => u.active && (u.role === "manager" || u.role === "admin")).map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Datum beoordeling</label>
+                <Input
+                  type="date"
+                  value={formData.datum}
+                  onChange={e => setFormData(prev => ({ ...prev, datum: e.target.value }))}
+                  readOnly={isReadOnly}
+                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                  data-testid="input-beoor-datum"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelingsperiode</label>
+                <Input
+                  value={formData.periode}
+                  onChange={e => setFormData(prev => ({ ...prev, periode: e.target.value }))}
+                  placeholder="bijv. jan 2025 - dec 2025"
+                  readOnly={isReadOnly}
+                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                  data-testid="input-beoor-periode"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {(selectedUserId || viewingReview) && (
+          <Card className="border border-border/60 print:border print:shadow-none">
+            <CardContent className="p-6 print:p-4 space-y-4">
+              <h3 className="font-semibold text-sm border-b pb-2 print:text-base">Competentiebeoordeling</h3>
+              {compList.length === 0 && !viewingReview ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground">Geen competenties gevonden voor deze medewerker.</p>
+                  {isAdmin && (
+                    <Button variant="link" onClick={() => {
+                      setCompetencyUserId(selectedUserId);
+                      setViewMode("competencies");
+                    }} className="mt-1">
+                      Competenties instellen
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {compList.map((comp, i) => {
+                    const currentScore = formScores[comp.id]?.score || null;
+                    const currentToelichting = formScores[comp.id]?.toelichting || "";
+                    return (
+                      <div key={comp.id} className="border rounded-lg p-4 space-y-3" data-testid={`beoor-comp-${comp.id}`}>
+                        <p className="text-sm font-medium">{i + 1}. {comp.name}</p>
+                        {isAdmin && (
+                          <div className="space-y-1">
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <div key={n} className="flex items-center gap-2">
+                                <Badge variant={currentScore === n ? "default" : "outline"} className="shrink-0 w-6 justify-center text-[10px] cursor-pointer" onClick={() => {
+                                  if (!isReadOnly) setFormScores(prev => ({ ...prev, [comp.id]: { ...prev[comp.id], score: n, toelichting: prev[comp.id]?.toelichting || "" } }));
+                                }}>
+                                  {n}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">{(comp as any)[`norm${n}`]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {!isAdmin && currentScore && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">Score:</span>
+                            <Badge variant="default" className="text-sm">{currentScore}</Badge>
+                            <span className="text-sm text-muted-foreground">({scoreLabels[currentScore]})</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {isAdmin && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs font-medium text-muted-foreground">Score:</span>
+                              <Badge variant={currentScore ? "default" : "outline"} className="text-xs">
+                                {currentScore ? `${currentScore} - ${scoreLabels[currentScore]}` : "Niet beoordeeld"}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                        {isAdmin && (
+                          <Textarea
+                            value={currentToelichting}
+                            onChange={e => setFormScores(prev => ({ ...prev, [comp.id]: { ...prev[comp.id], score: prev[comp.id]?.score || null, toelichting: e.target.value } }))}
+                            rows={2}
+                            placeholder="Toelichting (optioneel)"
+                            className="text-xs"
+                            data-testid={`input-beoor-toelichting-${comp.id}`}
+                          />
+                        )}
+                        {!isAdmin && currentToelichting && (
+                          <p className="text-xs text-muted-foreground"><span className="font-medium">Toelichting:</span> {currentToelichting}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-4 print:space-y-2">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">Totaalbeoordeling en afspraken</h3>
+            {isAdmin && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Totaalbeoordeling</label>
+                <Select onValueChange={val => setFormData(prev => ({ ...prev, totalScore: val }))} value={formData.totalScore}>
+                  <SelectTrigger data-testid="select-beoor-total">
+                    <SelectValue placeholder="Selecteer totaalbeoordeling" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1 - Onvoldoende">1 - Onvoldoende</SelectItem>
+                    <SelectItem value="2 - Matig">2 - Matig</SelectItem>
+                    <SelectItem value="3 - Voldoende">3 - Voldoende</SelectItem>
+                    <SelectItem value="4 - Goed">4 - Goed</SelectItem>
+                    <SelectItem value="5 - Uitstekend">5 - Uitstekend</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {!isAdmin && formData.totalScore && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground print:text-black">Totaalbeoordeling</label>
+                <p className="text-sm font-medium">{formData.totalScore}</p>
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Gemaakte afspraken</label>
+              <Textarea
+                value={formData.afspraken}
+                onChange={e => setFormData(prev => ({ ...prev, afspraken: e.target.value }))}
+                rows={3}
+                readOnly={isReadOnly}
+                placeholder="Welke afspraken zijn er gemaakt?"
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-beoor-afspraken"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Opmerkingen medewerker</label>
+              <Textarea
+                value={formData.opmerkingMedewerker}
+                onChange={e => setFormData(prev => ({ ...prev, opmerkingMedewerker: e.target.value }))}
+                rows={2}
+                readOnly={isReadOnly}
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-beoor-opmerking-medewerker"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Opmerkingen beoordelaar</label>
+              <Textarea
+                value={formData.opmerkingBeoordelaar}
+                onChange={e => setFormData(prev => ({ ...prev, opmerkingBeoordelaar: e.target.value }))}
+                rows={2}
+                readOnly={isReadOnly}
+                className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none print:resize-none"
+                data-testid="input-beoor-opmerking-beoordelaar"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 print:border print:shadow-none print:break-inside-avoid">
+          <CardContent className="p-6 print:p-4 space-y-6 print:space-y-4">
+            <h3 className="font-semibold text-sm border-b pb-2 print:text-base">Ondertekening</h3>
+            <p className="text-xs text-muted-foreground print:text-black">
+              Beide partijen verklaren dat deze beoordeling heeft plaatsgevonden en dat de inhoud van dit formulier een correcte weergave is van het besprokene.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-8 print:space-y-12">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground print:text-black mb-1">Datum</p>
+                  <div className="border-b border-dashed h-6 print:h-8"></div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground print:text-black mb-1">Handtekening medewerker</p>
+                  <div className="border-b border-dashed h-12 print:h-16"></div>
+                </div>
+              </div>
+              <div className="space-y-8 print:space-y-12">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground print:text-black mb-1">Datum</p>
+                  <div className="border-b border-dashed h-6 print:h-8"></div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground print:text-black mb-1">Handtekening beoordelaar</p>
+                  <div className="border-b border-dashed h-12 print:h-16"></div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {isAdmin && (
+        <div className="flex justify-end gap-2 print:hidden">
+          <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="button-save-beoordeling-bottom">
+            <Save className="h-4 w-4 mr-2" />
+            {saveMutation.isPending ? "Opslaan..." : "Opslaan"}
+          </Button>
+          <Button onClick={() => window.print()} variant="outline" data-testid="button-print-beoordeling-bottom">
+            <Printer className="h-4 w-4 mr-2" />
+            Afdrukken
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const rewardFormSchema = z.object({
   userId: z.string().min(1, "Selecteer een medewerker"),
   points: z.coerce.number().min(1, "Minimaal 1 punt"),
@@ -835,12 +1543,7 @@ export default function BeloningenPage() {
       )}
 
       {activeTab === "beoordeling" && (
-        <Card>
-          <CardContent className="flex flex-col items-center py-10">
-            <UserCheck className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground text-sm">Beoordelingen — binnenkort beschikbaar</p>
-          </CardContent>
-        </Card>
+        <BeoordelingSection users={users} currentUser={user} />
       )}
 
       {activeTab === "beloningsysteem" && (

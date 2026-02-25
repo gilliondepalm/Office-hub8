@@ -3,7 +3,7 @@ import { eq, desc, sql, and } from "drizzle-orm";
 import {
   users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
   aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks, caoDocuments, siteSettings,
-  functioneringReviews,
+  functioneringReviews, competencies, beoordelingReviews, beoordelingScores,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -20,6 +20,9 @@ import {
   type LegislationLink, type InsertLegislationLink,
   type CaoDocument, type InsertCaoDocument,
   type FunctioneringReview, type InsertFunctioneringReview,
+  type Competency, type InsertCompetency,
+  type BeoordelingReview, type InsertBeoordelingReview,
+  type BeoordelingScore, type InsertBeoordelingScore,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -118,6 +121,24 @@ export interface IStorage {
   createFunctioneringReview(review: InsertFunctioneringReview): Promise<FunctioneringReview>;
   updateFunctioneringReview(id: string, data: Partial<InsertFunctioneringReview>): Promise<FunctioneringReview>;
   deleteFunctioneringReview(id: string): Promise<void>;
+
+  getCompetenciesByUser(userId: string): Promise<Competency[]>;
+  createCompetency(comp: InsertCompetency): Promise<Competency>;
+  updateCompetency(id: string, data: Partial<InsertCompetency>): Promise<Competency>;
+  deleteCompetency(id: string): Promise<void>;
+
+  getBeoordelingReviews(): Promise<(BeoordelingReview & { userName?: string })[]>;
+  getBeoordelingReviewsByUser(userId: string): Promise<BeoordelingReview[]>;
+  getBeoordelingReviewsByYear(year: number): Promise<(BeoordelingReview & { userName?: string })[]>;
+  getBeoordelingReviewByUserAndYear(userId: string, year: number): Promise<BeoordelingReview | undefined>;
+  createBeoordelingReview(review: InsertBeoordelingReview): Promise<BeoordelingReview>;
+  updateBeoordelingReview(id: string, data: Partial<InsertBeoordelingReview>): Promise<BeoordelingReview>;
+  deleteBeoordelingReview(id: string): Promise<void>;
+
+  getBeoordelingScoresByReview(reviewId: string): Promise<(BeoordelingScore & { competencyName?: string })[]>;
+  createBeoordelingScore(score: InsertBeoordelingScore): Promise<BeoordelingScore>;
+  updateBeoordelingScore(id: string, data: Partial<InsertBeoordelingScore>): Promise<BeoordelingScore>;
+  deleteBeoordelingScoresByReview(reviewId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -706,6 +727,142 @@ export class DatabaseStorage implements IStorage {
 
   async deleteFunctioneringReview(id: string): Promise<void> {
     await db.delete(functioneringReviews).where(eq(functioneringReviews.id, id));
+  }
+
+  async getCompetenciesByUser(userId: string): Promise<Competency[]> {
+    return db.select().from(competencies)
+      .where(eq(competencies.userId, userId))
+      .orderBy(competencies.sortOrder);
+  }
+
+  async createCompetency(comp: InsertCompetency): Promise<Competency> {
+    const [created] = await db.insert(competencies).values(comp).returning();
+    return created;
+  }
+
+  async updateCompetency(id: string, data: Partial<InsertCompetency>): Promise<Competency> {
+    const [updated] = await db.update(competencies).set(data).where(eq(competencies.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCompetency(id: string): Promise<void> {
+    await db.delete(beoordelingScores).where(eq(beoordelingScores.competencyId, id));
+    await db.delete(competencies).where(eq(competencies.id, id));
+  }
+
+  async getBeoordelingReviews(): Promise<(BeoordelingReview & { userName?: string })[]> {
+    const result = await db
+      .select({
+        id: beoordelingReviews.id,
+        userId: beoordelingReviews.userId,
+        year: beoordelingReviews.year,
+        medewerker: beoordelingReviews.medewerker,
+        functie: beoordelingReviews.functie,
+        afdeling: beoordelingReviews.afdeling,
+        beoordelaar: beoordelingReviews.beoordelaar,
+        datum: beoordelingReviews.datum,
+        periode: beoordelingReviews.periode,
+        totalScore: beoordelingReviews.totalScore,
+        afspraken: beoordelingReviews.afspraken,
+        opmerkingMedewerker: beoordelingReviews.opmerkingMedewerker,
+        opmerkingBeoordelaar: beoordelingReviews.opmerkingBeoordelaar,
+        createdBy: beoordelingReviews.createdBy,
+        createdAt: beoordelingReviews.createdAt,
+        updatedAt: beoordelingReviews.updatedAt,
+        userName: users.fullName,
+      })
+      .from(beoordelingReviews)
+      .leftJoin(users, eq(beoordelingReviews.userId, users.id))
+      .orderBy(desc(beoordelingReviews.year), desc(beoordelingReviews.createdAt));
+    return result as any;
+  }
+
+  async getBeoordelingReviewsByUser(userId: string): Promise<BeoordelingReview[]> {
+    return db.select().from(beoordelingReviews)
+      .where(eq(beoordelingReviews.userId, userId))
+      .orderBy(desc(beoordelingReviews.year));
+  }
+
+  async getBeoordelingReviewsByYear(year: number): Promise<(BeoordelingReview & { userName?: string })[]> {
+    const result = await db
+      .select({
+        id: beoordelingReviews.id,
+        userId: beoordelingReviews.userId,
+        year: beoordelingReviews.year,
+        medewerker: beoordelingReviews.medewerker,
+        functie: beoordelingReviews.functie,
+        afdeling: beoordelingReviews.afdeling,
+        beoordelaar: beoordelingReviews.beoordelaar,
+        datum: beoordelingReviews.datum,
+        periode: beoordelingReviews.periode,
+        totalScore: beoordelingReviews.totalScore,
+        afspraken: beoordelingReviews.afspraken,
+        opmerkingMedewerker: beoordelingReviews.opmerkingMedewerker,
+        opmerkingBeoordelaar: beoordelingReviews.opmerkingBeoordelaar,
+        createdBy: beoordelingReviews.createdBy,
+        createdAt: beoordelingReviews.createdAt,
+        updatedAt: beoordelingReviews.updatedAt,
+        userName: users.fullName,
+      })
+      .from(beoordelingReviews)
+      .leftJoin(users, eq(beoordelingReviews.userId, users.id))
+      .where(eq(beoordelingReviews.year, year))
+      .orderBy(beoordelingReviews.medewerker);
+    return result as any;
+  }
+
+  async getBeoordelingReviewByUserAndYear(userId: string, year: number): Promise<BeoordelingReview | undefined> {
+    const [review] = await db.select().from(beoordelingReviews)
+      .where(and(eq(beoordelingReviews.userId, userId), eq(beoordelingReviews.year, year)));
+    return review;
+  }
+
+  async createBeoordelingReview(review: InsertBeoordelingReview): Promise<BeoordelingReview> {
+    const [created] = await db.insert(beoordelingReviews).values(review).returning();
+    return created;
+  }
+
+  async updateBeoordelingReview(id: string, data: Partial<InsertBeoordelingReview>): Promise<BeoordelingReview> {
+    const [updated] = await db.update(beoordelingReviews)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(beoordelingReviews.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBeoordelingReview(id: string): Promise<void> {
+    await db.delete(beoordelingScores).where(eq(beoordelingScores.reviewId, id));
+    await db.delete(beoordelingReviews).where(eq(beoordelingReviews.id, id));
+  }
+
+  async getBeoordelingScoresByReview(reviewId: string): Promise<(BeoordelingScore & { competencyName?: string })[]> {
+    const result = await db
+      .select({
+        id: beoordelingScores.id,
+        reviewId: beoordelingScores.reviewId,
+        competencyId: beoordelingScores.competencyId,
+        score: beoordelingScores.score,
+        toelichting: beoordelingScores.toelichting,
+        competencyName: competencies.name,
+      })
+      .from(beoordelingScores)
+      .leftJoin(competencies, eq(beoordelingScores.competencyId, competencies.id))
+      .where(eq(beoordelingScores.reviewId, reviewId));
+    return result as any;
+  }
+
+  async createBeoordelingScore(score: InsertBeoordelingScore): Promise<BeoordelingScore> {
+    const [created] = await db.insert(beoordelingScores).values(score).returning();
+    return created;
+  }
+
+  async updateBeoordelingScore(id: string, data: Partial<InsertBeoordelingScore>): Promise<BeoordelingScore> {
+    const [updated] = await db.update(beoordelingScores).set(data).where(eq(beoordelingScores.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBeoordelingScoresByReview(reviewId: string): Promise<void> {
+    await db.delete(beoordelingScores).where(eq(beoordelingScores.reviewId, reviewId));
   }
 }
 
