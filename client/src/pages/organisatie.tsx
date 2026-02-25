@@ -626,17 +626,21 @@ function OrganogramTab() {
             <h3 className="font-semibold" data-testid="text-organogram-directie">Directie & Staf</h3>
             <div className="mt-2 space-y-1">
               {directeur && (
-                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{directeur.fullName}</span>
-                  {directeur.phoneExtension && <span className="text-xs">({directeur.phoneExtension})</span>}
-                  <Badge variant="default" className="text-xs">directeur</Badge>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium text-foreground">{directeur.fullName}</span>
+                    <Badge variant="default" className="text-xs">directeur</Badge>
+                  </div>
+                  <span className="text-xs font-mono w-8 text-right">{directeur.phoneExtension || ""}</span>
                 </div>
               )}
               {stafAdmins.map((u) => (
-                <div key={u.id} className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-                  <span>{u.fullName}</span>
-                  {u.phoneExtension && <span className="text-xs">({u.phoneExtension})</span>}
-                  <Badge variant="secondary" className="text-xs">admin</Badge>
+                <div key={u.id} className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <span>{u.fullName}</span>
+                    <Badge variant="secondary" className="text-xs">admin</Badge>
+                  </div>
+                  <span className="text-xs font-mono w-8 text-right">{u.phoneExtension || ""}</span>
                 </div>
               ))}
             </div>
@@ -664,18 +668,20 @@ function OrganogramTab() {
                 {manager && (
                   <div className="mb-2 pb-2 border-b">
                     <p className="text-xs text-muted-foreground">Manager</p>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-between">
                       <p className="text-sm font-medium">{manager.fullName}</p>
-                      {manager.phoneExtension && <span className="text-xs text-muted-foreground">({manager.phoneExtension})</span>}
+                      <span className="text-xs font-mono w-8 text-right text-muted-foreground">{manager.phoneExtension || ""}</span>
                     </div>
                   </div>
                 )}
                 <div className="space-y-1">
                   {members.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2">
-                      <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="text-sm text-muted-foreground">{m.fullName}</span>
-                      {m.phoneExtension && <span className="text-xs text-muted-foreground">({m.phoneExtension})</span>}
+                    <div key={m.id} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-muted-foreground">{m.fullName}</span>
+                      </div>
+                      <span className="text-xs font-mono w-8 text-right text-muted-foreground">{m.phoneExtension || ""}</span>
                     </div>
                   ))}
                   {members.length === 0 && !manager && (
