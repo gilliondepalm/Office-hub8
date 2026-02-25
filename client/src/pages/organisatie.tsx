@@ -686,201 +686,140 @@ function OrganogramTab() {
 }
 
 function CaoInfoTab() {
-  const [addOpen, setAddOpen] = useState(false);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
-  const chapters = [
-    { number: "I", title: "Algemeen" },
-    { number: "II", title: "Begin en einde dienstverband" },
-    { number: "III", title: "Arbeidstijd" },
-    { number: "IV", title: "Loonbepalingen" },
-    { number: "V", title: "Vakantie, vakantietoeslag en buitengewoon verlof" },
-    { number: "VI", title: "Bepalingen en voorzieningen m.b.t. ziekte en bedrijfsongeval" },
-    { number: "VII", title: "Voorzieningen bij overlijden" },
-    { number: "VIII", title: "Ouderdomsvoorziening" },
-    { number: "IX", title: "Diverse bepalingen" },
-    { number: "X", title: "Regeling werken met computerbeeldschermen" },
-    { number: "XI", title: "Slotbepalingen" },
-  ];
+  type CaoFile = { name: string; path: string; size: number; modified: string };
 
-  const caoDocFormSchema = z.object({
-    title: z.string().min(1, "Titel is verplicht"),
-    documentUrl: z.string().min(1, "Document pad is verplicht"),
+  const { data: caoFiles, isLoading } = useQuery<CaoFile[]>({
+    queryKey: ["/api/uploads/cao"],
   });
 
-  const form = useForm<z.infer<typeof caoDocFormSchema>>({
-    resolver: zodResolver(caoDocFormSchema),
-    defaultValues: { title: "", documentUrl: "" },
-  });
-
-  const { data: caoDocuments } = useQuery<CaoDocument[]>({
-    queryKey: ["/api/cao-documents"],
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof caoDocFormSchema> & { chapterNumber: string }) => {
-      await apiRequest("POST", "/api/cao-documents", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cao-documents"] });
-      toast({ title: "Document link toegevoegd" });
-      setAddOpen(false);
-      setSelectedChapter(null);
-      form.reset();
-    },
-    onError: () => {
-      toast({ title: "Fout bij toevoegen", variant: "destructive" });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/cao-documents/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cao-documents"] });
-      toast({ title: "Document link verwijderd" });
-    },
-  });
-
-  const getDocsForChapter = (chapterNumber: string) => {
-    return caoDocuments?.filter((d) => d.chapterNumber === chapterNumber) || [];
-  };
-
-  const openDocument = (url: string) => {
-    if (url.startsWith("file:///") || url.startsWith("\\\\") || /^[A-Za-z]:\\/.test(url)) {
-      const filePath = url.startsWith("file:///") ? url : "file:///" + url.replace(/\\/g, "/");
-      const opened = window.open(filePath, "_blank");
-      if (!opened) {
-        const a = document.createElement("a");
-        a.href = filePath;
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
-    } else {
-      window.open(url, "_blank", "noopener,noreferrer");
+  const handleUpload = async (file: File) => {
+    if (file.type !== "application/pdf") {
+      toast({ title: "Alleen PDF-bestanden toegestaan", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("pdf", file);
+      const res = await fetch("/api/uploads/cao", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Upload mislukt");
+      queryClient.invalidateQueries({ queryKey: ["/api/uploads/cao"] });
+      toast({ title: "CAO document toegevoegd" });
+    } catch {
+      toast({ title: "Fout bij uploaden", variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
   };
+
+  const handleDelete = async (filename: string) => {
+    try {
+      const res = await fetch(`/api/uploads/cao/${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Verwijderen mislukt");
+      queryClient.invalidateQueries({ queryKey: ["/api/uploads/cao"] });
+      toast({ title: "CAO document verwijderd" });
+    } catch {
+      toast({ title: "Fout bij verwijderen", variant: "destructive" });
+    }
+  };
+
+  if (isLoading) {
+    return <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}</div>;
+  }
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-primary" />
-            CAO Informatie
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-primary" />
+              CAO Informatie
+            </CardTitle>
+            {isAdmin && (
+              <>
+                <Button
+                  onClick={() => document.getElementById("cao-upload-input")?.click()}
+                  disabled={uploading}
+                  data-testid="button-add-cao-doc"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading ? "Uploaden..." : "Nieuw Document"}
+                </Button>
+                <input
+                  id="cao-upload-input"
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUpload(file);
+                    e.target.value = "";
+                  }}
+                  data-testid="input-cao-upload"
+                />
+              </>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <h4 className="font-medium text-sm mb-1" data-testid="text-cao-title">Collectieve Arbeidsovereenkomst</h4>
             <p className="text-sm text-muted-foreground">
-              De CAO regelt de arbeidsvoorwaarden voor alle medewerkers. Hieronder vindt u de hoofdstukindeling van de geldende CAO.
+              De CAO regelt de arbeidsvoorwaarden voor alle medewerkers. Hieronder vindt u de beschikbare CAO documenten.
             </p>
           </div>
 
-          <Accordion type="multiple" className="w-full grid grid-cols-2 gap-x-6">
-            {chapters.map((ch) => {
-              const docs = getDocsForChapter(ch.number);
-              return (
-                <AccordionItem key={ch.number} value={ch.number}>
-                  <AccordionTrigger className="hover:no-underline" data-testid={`cao-chapter-${ch.number}`}>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
-                        {ch.number}
-                      </div>
-                      <span className="text-sm font-medium text-left">{ch.title}</span>
-                      {docs.length > 0 && (
-                        <Badge variant="secondary" className="text-xs">{docs.length}</Badge>
-                      )}
+          {!caoFiles || caoFiles.length === 0 ? (
+            <div className="flex flex-col items-center py-8">
+              <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Geen CAO documenten gevonden</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {caoFiles.map((file) => (
+                <div
+                  key={file.name}
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-md group hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => window.open(file.path, "_blank")}
+                  data-testid={`cao-file-${file.name}`}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="h-5 w-5 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{file.name.replace(/\.pdf$/i, "")}</p>
+                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
                     </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="pl-11 space-y-2">
-                      {docs.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic">Geen documenten gekoppeld</p>
-                      )}
-                      {docs.map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between gap-2 group" data-testid={`cao-doc-${doc.id}`}>
-                          <div
-                            className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
-                            onClick={() => openDocument(doc.documentUrl)}
-                          >
-                            <FileText className="h-4 w-4 text-primary shrink-0" />
-                            <span className="text-sm hover:underline truncate">{doc.title}</span>
-                            <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
-                          </div>
-                          {isAdmin && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="shrink-0 invisible group-hover:visible h-7 w-7"
-                              onClick={() => deleteMutation.mutate(doc.id)}
-                              data-testid={`button-delete-cao-doc-${doc.id}`}
-                            >
-                              <Trash2 className="h-3 w-3 text-muted-foreground" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      {isAdmin && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-1"
-                          onClick={() => {
-                            setSelectedChapter(ch.number);
-                            form.reset({ title: "", documentUrl: "" });
-                            setAddOpen(true);
-                          }}
-                          data-testid={`button-add-cao-doc-${ch.number}`}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Document Toevoegen
-                        </Button>
-                      )}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
+                  </div>
+                  {isAdmin && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="shrink-0 invisible group-hover:visible"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(file.name); }}
+                      data-testid={`button-delete-cao-${file.name}`}
+                    >
+                      <Trash2 className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Document Toevoegen aan Hoofdstuk {selectedChapter}</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit((d) => selectedChapter && createMutation.mutate({ ...d, chapterNumber: selectedChapter }))} className="space-y-4">
-              <FormField control={form.control} name="title" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Titel</FormLabel>
-                  <FormControl><Input {...field} data-testid="input-cao-doc-title" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="documentUrl" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Document pad of URL</FormLabel>
-                  <FormControl><Input {...field} placeholder="file:///C:/pad/naar/document.pdf of https://..." data-testid="input-cao-doc-url" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-cao-doc">
-                {createMutation.isPending ? "Opslaan..." : "Document Opslaan"}
-              </Button>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
