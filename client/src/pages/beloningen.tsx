@@ -493,7 +493,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
         </div>
       </div>
 
-      <div id="functionering-form" className="space-y-6 print:space-y-4">
+      <div id="functionering-form" className="space-y-6 print:hidden">
         <Card className="border border-border/60 print:border print:shadow-none print:bg-white">
           <CardContent className="p-6 print:p-4">
             <h2 className="text-lg font-bold text-center mb-1 print:text-xl" data-testid="text-functionering-title">
@@ -872,6 +872,19 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="hidden print:block">
+        <ReadOnlyFunctioneringForm review={{
+          ...formData,
+          id: viewingReview?.id || "",
+          userId: viewingReview?.userId || selectedUserId || "",
+          year: viewingReview?.year || new Date().getFullYear(),
+          createdBy: viewingReview?.createdBy || currentUser?.id || "",
+          createdAt: viewingReview?.createdAt || new Date().toISOString(),
+          updatedAt: viewingReview?.updatedAt || null,
+          userName: viewingReview?.userName || formData.medewerker,
+        } as FunctioneringReview} />
       </div>
 
       <div className="flex justify-end gap-2 print:hidden">
