@@ -16,6 +16,7 @@ import {
   insertPersonalDevelopmentSchema, insertLegislationLinkSchema, insertCaoDocumentSchema,
   insertFunctioneringReviewSchema,
   insertCompetencySchema, insertBeoordelingReviewSchema, insertBeoordelingScoreSchema,
+  insertJaarplanItemSchema,
   isAdminRole,
 } from "@shared/schema";
 
@@ -1334,6 +1335,56 @@ export async function registerRoutes(
     } catch (err: any) {
       res.status(400).json({ message: err.message || "Upload mislukt" });
     }
+  });
+
+  app.get("/api/jaarplan", requireAuth, async (req, res) => {
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    const items = await storage.getJaarplanItemsByYear(year);
+    res.json(items);
+  });
+
+  app.get("/api/jaarplan/mine", requireAuth, async (req, res) => {
+    const items = await storage.getJaarplanItemsByUser((req as any).user.id);
+    res.json(items);
+  });
+
+  app.post("/api/jaarplan", requireAuth, async (req, res) => {
+    if (!isAdminRole((req as any).user.role)) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      const { editId, ...rest } = req.body;
+      const parsed = insertJaarplanItemSchema.parse(rest);
+      if (editId) {
+        const updated = await storage.updateJaarplanItem(editId, parsed);
+        res.json(updated);
+      } else {
+        const item = await storage.createJaarplanItem(parsed);
+        res.json(item);
+      }
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Validatiefout" });
+    }
+  });
+
+  app.put("/api/jaarplan/:id", requireAuth, async (req, res) => {
+    if (!isAdminRole((req as any).user.role)) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      const updated = await storage.updateJaarplanItem(req.params.id, req.body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Bijwerken mislukt" });
+    }
+  });
+
+  app.delete("/api/jaarplan/:id", requireAuth, async (req, res) => {
+    if (!isAdminRole((req as any).user.role)) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    await storage.deleteJaarplanItem(req.params.id);
+    res.json({ success: true });
   });
 
   return httpServer;

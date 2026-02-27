@@ -24,7 +24,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Reward, User, FunctioneringReview, Competency, BeoordelingReview, BeoordelingScore } from "@shared/schema";
+import type { Reward, User, FunctioneringReview, Competency, BeoordelingReview, BeoordelingScore, JaarplanItem } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@shared/schema";
 
@@ -1984,6 +1984,318 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
   );
 }
 
+const statusOptions = [
+  { value: "niet gestart", label: "Niet gestart", color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" },
+  { value: "in uitvoering", label: "In uitvoering", color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
+  { value: "op schema", label: "Op schema", color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
+  { value: "vertraagd", label: "Vertraagd", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
+  { value: "afgerond", label: "Afgerond", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" },
+  { value: "geannuleerd", label: "Geannuleerd", color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
+];
+
+function JaarplanSection({ users, currentUser }: { users?: User[]; currentUser?: User | null }) {
+  const { toast } = useToast();
+  const isAdmin = isAdminRole(currentUser?.role);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [editingItem, setEditingItem] = useState<(JaarplanItem & { userName?: string }) | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [formData, setFormData] = useState({
+    afspraken: "",
+    startDatum: "",
+    eindDatum: "",
+    voortgang: "",
+    status: "niet gestart",
+  });
+
+  const { data: itemsByYear, isLoading } = useQuery<(JaarplanItem & { userName?: string })[]>({
+    queryKey: ["/api/jaarplan", selectedYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/jaarplan?year=${selectedYear}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Ophalen mislukt");
+      return res.json();
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: myItems } = useQuery<JaarplanItem[]>({
+    queryKey: ["/api/jaarplan/mine"],
+    enabled: !isAdmin,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      await apiRequest("POST", "/api/jaarplan", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jaarplan"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jaarplan/mine"] });
+      toast({ title: "Jaarplan opgeslagen" });
+      handleCloseForm();
+    },
+    onError: () => {
+      toast({ title: "Opslaan mislukt", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/jaarplan/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jaarplan"] });
+      toast({ title: "Item verwijderd" });
+    },
+  });
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingItem(null);
+    setSelectedUserId("");
+    setFormData({ afspraken: "", startDatum: "", eindDatum: "", voortgang: "", status: "niet gestart" });
+  };
+
+  const handleNewItem = () => {
+    handleCloseForm();
+    setShowForm(true);
+  };
+
+  const handleEditItem = (item: JaarplanItem & { userName?: string }) => {
+    setEditingItem(item);
+    setSelectedUserId(item.userId);
+    setFormData({
+      afspraken: item.afspraken,
+      startDatum: item.startDatum || "",
+      eindDatum: item.eindDatum || "",
+      voortgang: item.voortgang || "",
+      status: item.status || "niet gestart",
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.afspraken.trim()) {
+      toast({ title: "Vul de afspraken in", variant: "destructive" });
+      return;
+    }
+    const userId = selectedUserId || currentUser?.id;
+    if (!userId) return;
+
+    saveMutation.mutate({
+      userId,
+      year: selectedYear,
+      ...formData,
+      startDatum: formData.startDatum || null,
+      eindDatum: formData.eindDatum || null,
+      editId: editingItem?.id,
+      createdBy: currentUser?.id,
+    });
+  };
+
+  const itemsToShow = isAdmin ? itemsByYear : myItems?.filter(i => i.year === selectedYear);
+  const groupedByUser = (itemsToShow || []).reduce((acc, item) => {
+    const name = (item as any).userName || "Onbekend";
+    if (!acc[name]) acc[name] = [];
+    acc[name].push(item);
+    return acc;
+  }, {} as Record<string, (JaarplanItem & { userName?: string })[]>);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between print:hidden">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" onClick={() => setSelectedYear(y => y - 1)} data-testid="button-jaarplan-year-prev">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-lg font-semibold min-w-[60px] text-center" data-testid="text-jaarplan-year">{selectedYear}</span>
+          <Button variant="outline" size="icon" onClick={() => setSelectedYear(y => y + 1)} data-testid="button-jaarplan-year-next">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        {isAdmin && (
+          <Button onClick={handleNewItem} data-testid="button-new-jaarplan">
+            <Plus className="h-4 w-4 mr-2" />
+            Nieuw Item
+          </Button>
+        )}
+      </div>
+
+      {showForm && isAdmin && (
+        <Card className="border border-border/60">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold">{editingItem ? "Item bewerken" : "Nieuw jaarplan item"}</h4>
+              <Button variant="ghost" size="sm" onClick={handleCloseForm}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">Medewerker</label>
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger data-testid="select-jaarplan-user">
+                    <SelectValue placeholder="Selecteer medewerker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users?.filter(u => u.active).map(u => (
+                      <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">Afspraken</label>
+                <Textarea
+                  value={formData.afspraken}
+                  onChange={e => setFormData(prev => ({ ...prev, afspraken: e.target.value }))}
+                  placeholder="Beschrijf de afspraken..."
+                  rows={3}
+                  data-testid="input-jaarplan-afspraken"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Startdatum</label>
+                <Input
+                  type="date"
+                  value={formData.startDatum}
+                  onChange={e => setFormData(prev => ({ ...prev, startDatum: e.target.value }))}
+                  data-testid="input-jaarplan-start"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Einddatum</label>
+                <Input
+                  type="date"
+                  value={formData.eindDatum}
+                  onChange={e => setFormData(prev => ({ ...prev, eindDatum: e.target.value }))}
+                  data-testid="input-jaarplan-eind"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Voortgang</label>
+                <Textarea
+                  value={formData.voortgang}
+                  onChange={e => setFormData(prev => ({ ...prev, voortgang: e.target.value }))}
+                  placeholder="Beschrijf de voortgang..."
+                  rows={2}
+                  data-testid="input-jaarplan-voortgang"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Status</label>
+                <Select value={formData.status} onValueChange={v => setFormData(prev => ({ ...prev, status: v }))}>
+                  <SelectTrigger data-testid="select-jaarplan-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleCloseForm}>Annuleren</Button>
+              <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="button-save-jaarplan">
+                <Save className="h-4 w-4 mr-2" />
+                {saveMutation.isPending ? "Opslaan..." : "Opslaan"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+        </div>
+      ) : !itemsToShow || itemsToShow.length === 0 ? (
+        <Card className="border border-dashed">
+          <CardContent className="p-8 text-center">
+            <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Geen jaarplan items voor {selectedYear}</p>
+            {isAdmin && (
+              <Button variant="link" onClick={handleNewItem} className="mt-2" data-testid="button-new-jaarplan-empty">
+                Voeg een item toe
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(groupedByUser).sort(([a], [b]) => a.localeCompare(b)).map(([userName, items]) => (
+            <Card key={userName} className="border border-border/60">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">{userName.split(" ").map(n => n[0]).join("").slice(0, 2)}</AvatarFallback>
+                  </Avatar>
+                  <h3 className="text-sm font-semibold" data-testid={`jaarplan-user-${userName}`}>{userName}</h3>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" data-testid={`jaarplan-table-${userName}`}>
+                    <thead>
+                      <tr className="border-b text-xs text-muted-foreground">
+                        <th className="text-left py-2 pr-3 font-medium">Afspraken</th>
+                        <th className="text-left py-2 px-3 font-medium whitespace-nowrap">Start</th>
+                        <th className="text-left py-2 px-3 font-medium whitespace-nowrap">Einde</th>
+                        <th className="text-left py-2 px-3 font-medium">Voortgang</th>
+                        <th className="text-left py-2 px-3 font-medium">Status</th>
+                        {isAdmin && <th className="text-right py-2 pl-3 font-medium w-20"></th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map(item => {
+                        const statusOpt = statusOptions.find(s => s.value === item.status) || statusOptions[0];
+                        return (
+                          <tr key={item.id} className="border-b last:border-0" data-testid={`jaarplan-row-${item.id}`}>
+                            <td className="py-2 pr-3 max-w-[250px]">
+                              <p className="text-sm whitespace-pre-wrap">{item.afspraken}</p>
+                            </td>
+                            <td className="py-2 px-3 whitespace-nowrap text-xs text-muted-foreground">
+                              {item.startDatum ? format(new Date(item.startDatum), "d MMM yyyy", { locale: nl }) : "—"}
+                            </td>
+                            <td className="py-2 px-3 whitespace-nowrap text-xs text-muted-foreground">
+                              {item.eindDatum ? format(new Date(item.eindDatum), "d MMM yyyy", { locale: nl }) : "—"}
+                            </td>
+                            <td className="py-2 px-3 max-w-[200px]">
+                              <p className="text-xs text-muted-foreground whitespace-pre-wrap">{item.voortgang || "—"}</p>
+                            </td>
+                            <td className="py-2 px-3">
+                              <Badge variant="outline" className={`text-[10px] ${statusOpt.color}`} data-testid={`jaarplan-status-${item.id}`}>
+                                {statusOpt.label}
+                              </Badge>
+                            </td>
+                            {isAdmin && (
+                              <td className="py-2 pl-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)} data-testid={`button-edit-jaarplan-${item.id}`}>
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(item.id)} data-testid={`button-delete-jaarplan-${item.id}`}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const rewardFormSchema = z.object({
   userId: z.string().min(1, "Selecteer een medewerker"),
   points: z.coerce.number().min(1, "Minimaal 1 punt"),
@@ -2131,6 +2443,18 @@ export default function BeloningenPage() {
           <UserCheck className="h-4 w-4 inline mr-1.5 -mt-0.5" />
           Beoordeling
         </button>
+        <button
+          onClick={() => setActiveTab("jaarplan")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "jaarplan"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+          data-testid="tab-jaarplan"
+        >
+          <FileText className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+          Jaarplan
+        </button>
         {isAdminRole(user?.role) && (
           <button
             onClick={() => setActiveTab("beloningsysteem")}
@@ -2153,6 +2477,10 @@ export default function BeloningenPage() {
 
       {activeTab === "beoordeling" && (
         <BeoordelingSection users={users} currentUser={user} />
+      )}
+
+      {activeTab === "jaarplan" && (
+        <JaarplanSection users={users} currentUser={user} />
       )}
 
       {activeTab === "beloningsysteem" && isAdminRole(user?.role) && (

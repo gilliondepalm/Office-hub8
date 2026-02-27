@@ -257,6 +257,22 @@ export const insertCompetencySchema = createInsertSchema(competencies).omit({ id
 export const insertBeoordelingReviewSchema = createInsertSchema(beoordelingReviews).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBeoordelingScoreSchema = createInsertSchema(beoordelingScores).omit({ id: true });
 
+export const jaarplanItems = pgTable("jaarplan_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  year: integer("year").notNull(),
+  afspraken: text("afspraken").notNull(),
+  startDatum: date("start_datum"),
+  eindDatum: date("eind_datum"),
+  voortgang: text("voortgang"),
+  status: text("status").default("niet gestart"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertJaarplanItemSchema = createInsertSchema(jaarplanItems).omit({ id: true, createdAt: true, updatedAt: true });
+
 export const loginSchema = z.object({
   username: z.string().min(1, "Gebruikersnaam is verplicht"),
   password: z.string().min(1, "Wachtwoord is verplicht"),
@@ -300,6 +316,8 @@ export type InsertBeoordelingReview = z.infer<typeof insertBeoordelingReviewSche
 export type BeoordelingReview = typeof beoordelingReviews.$inferSelect;
 export type InsertBeoordelingScore = z.infer<typeof insertBeoordelingScoreSchema>;
 export type BeoordelingScore = typeof beoordelingScores.$inferSelect;
+export type InsertJaarplanItem = z.infer<typeof insertJaarplanItemSchema>;
+export type JaarplanItem = typeof jaarplanItems.$inferSelect;
 
 export function isAdminRole(role?: string | null): boolean {
   return role === "admin" || role === "directeur";

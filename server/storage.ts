@@ -3,7 +3,7 @@ import { eq, desc, sql, and } from "drizzle-orm";
 import {
   users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
   aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks, caoDocuments, siteSettings,
-  functioneringReviews, competencies, beoordelingReviews, beoordelingScores,
+  functioneringReviews, competencies, beoordelingReviews, beoordelingScores, jaarplanItems,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -23,6 +23,7 @@ import {
   type Competency, type InsertCompetency,
   type BeoordelingReview, type InsertBeoordelingReview,
   type BeoordelingScore, type InsertBeoordelingScore,
+  type JaarplanItem, type InsertJaarplanItem,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -140,6 +141,12 @@ export interface IStorage {
   createBeoordelingScore(score: InsertBeoordelingScore): Promise<BeoordelingScore>;
   updateBeoordelingScore(id: string, data: Partial<InsertBeoordelingScore>): Promise<BeoordelingScore>;
   deleteBeoordelingScoresByReview(reviewId: string): Promise<void>;
+
+  getJaarplanItemsByYear(year: number): Promise<(JaarplanItem & { userName?: string })[]>;
+  getJaarplanItemsByUser(userId: string): Promise<JaarplanItem[]>;
+  createJaarplanItem(item: InsertJaarplanItem): Promise<JaarplanItem>;
+  updateJaarplanItem(id: string, data: Partial<InsertJaarplanItem>): Promise<JaarplanItem>;
+  deleteJaarplanItem(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -868,6 +875,33 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBeoordelingScoresByReview(reviewId: string): Promise<void> {
     await db.delete(beoordelingScores).where(eq(beoordelingScores.reviewId, reviewId));
+  }
+
+  async getJaarplanItemsByYear(year: number): Promise<(JaarplanItem & { userName?: string })[]> {
+    const items = await db.select().from(jaarplanItems).where(eq(jaarplanItems.year, year));
+    const allUsers = await db.select().from(users);
+    return items.map(item => ({
+      ...item,
+      userName: allUsers.find(u => u.id === item.userId)?.fullName || "Onbekend",
+    }));
+  }
+
+  async getJaarplanItemsByUser(userId: string): Promise<JaarplanItem[]> {
+    return db.select().from(jaarplanItems).where(eq(jaarplanItems.userId, userId));
+  }
+
+  async createJaarplanItem(item: InsertJaarplanItem): Promise<JaarplanItem> {
+    const [created] = await db.insert(jaarplanItems).values(item).returning();
+    return created;
+  }
+
+  async updateJaarplanItem(id: string, data: Partial<InsertJaarplanItem>): Promise<JaarplanItem> {
+    const [updated] = await db.update(jaarplanItems).set({ ...data, updatedAt: new Date() }).where(eq(jaarplanItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteJaarplanItem(id: string): Promise<void> {
+    await db.delete(jaarplanItems).where(eq(jaarplanItems.id, id));
   }
 }
 
