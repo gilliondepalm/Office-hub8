@@ -143,7 +143,7 @@ export interface IStorage {
   deleteBeoordelingScoresByReview(reviewId: string): Promise<void>;
 
   getJaarplanItemsByYear(year: number): Promise<(JaarplanItem & { userName?: string })[]>;
-  getJaarplanItemsByUser(userId: string): Promise<JaarplanItem[]>;
+  getJaarplanItemsByUser(userId: string): Promise<(JaarplanItem & { userName?: string })[]>;
   createJaarplanItem(item: InsertJaarplanItem): Promise<JaarplanItem>;
   updateJaarplanItem(id: string, data: Partial<InsertJaarplanItem>): Promise<JaarplanItem>;
   deleteJaarplanItem(id: string): Promise<void>;
@@ -886,8 +886,10 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getJaarplanItemsByUser(userId: string): Promise<JaarplanItem[]> {
-    return db.select().from(jaarplanItems).where(eq(jaarplanItems.userId, userId));
+  async getJaarplanItemsByUser(userId: string): Promise<(JaarplanItem & { userName?: string })[]> {
+    const items = await db.select().from(jaarplanItems).where(eq(jaarplanItems.userId, userId));
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    return items.map(item => ({ ...item, userName: user?.fullName || "Onbekend" }));
   }
 
   async createJaarplanItem(item: InsertJaarplanItem): Promise<JaarplanItem> {
