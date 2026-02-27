@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loginFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const { data: dashboardPhoto } = useQuery<{ value: string | null }>({
@@ -90,10 +91,38 @@ export default function DashboardPage() {
     },
   });
 
+  const uploadLoginPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("photo", file);
+      const res = await fetch("/api/site-settings/login-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Upload mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/site-settings/public", "login_photo"] });
+      toast({ title: "Foto bijgewerkt", description: "De inlogpagina foto is succesvol gewijzigd." });
+    },
+    onError: () => {
+      toast({ title: "Fout", description: "Het uploaden van de foto is mislukt.", variant: "destructive" });
+    },
+  });
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       uploadPhotoMutation.mutate(file);
+    }
+  };
+
+  const handleLoginPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadLoginPhotoMutation.mutate(file);
     }
   };
 
@@ -175,7 +204,7 @@ export default function DashboardPage() {
             </p>
           </div>
           {isAdmin && (
-            <div className="shrink-0">
+            <div className="shrink-0 flex gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -193,7 +222,26 @@ export default function DashboardPage() {
                 data-testid="button-change-photo"
               >
                 <Camera className="h-4 w-4" />
-                {uploadPhotoMutation.isPending ? "Uploaden..." : "Foto wijzigen"}
+                {uploadPhotoMutation.isPending ? "Uploaden..." : "Dashboard foto"}
+              </Button>
+              <input
+                ref={loginFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLoginPhotoChange}
+                data-testid="input-login-photo"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2 bg-white/20 text-white border-white/30 backdrop-blur-sm"
+                onClick={() => loginFileInputRef.current?.click()}
+                disabled={uploadLoginPhotoMutation.isPending}
+                data-testid="button-change-login-photo"
+              >
+                <Camera className="h-4 w-4" />
+                {uploadLoginPhotoMutation.isPending ? "Uploaden..." : "Inlogpagina foto"}
               </Button>
             </div>
           )}
