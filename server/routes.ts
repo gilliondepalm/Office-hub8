@@ -739,6 +739,12 @@ export async function registerRoutes(
     try {
       const parsed = insertAbsenceSchema.parse(req.body);
       const absence = await storage.createAbsence(parsed);
+      const requestingUser = await storage.getUser(parsed.userId);
+      if (requestingUser?.role === "directeur") {
+        await storage.updateAbsenceStatus(absence.id, "approved", parsed.userId);
+        const updated = (await storage.getAbsences()).find(a => a.id === absence.id);
+        return res.json(updated || absence);
+      }
       res.json(absence);
     } catch (err: any) {
       res.status(400).json({ message: err.message || "Validatiefout" });
