@@ -922,6 +922,7 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
     beoordelaar: "",
     datum: format(new Date(), "yyyy-MM-dd"),
     periode: "",
+    beoordelingsJaar: new Date().getFullYear(),
     afspraken: "",
     opmerkingMedewerker: "",
     opmerkingBeoordelaar: "",
@@ -982,7 +983,7 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
       setSelectedUserId("");
       setSelectedFunctie("");
       setFormScores({});
-      setFormData({ beoordelaar: "", datum: format(new Date(), "yyyy-MM-dd"), periode: "", afspraken: "", opmerkingMedewerker: "", opmerkingBeoordelaar: "" });
+      setFormData({ beoordelaar: "", datum: format(new Date(), "yyyy-MM-dd"), periode: "", beoordelingsJaar: new Date().getFullYear(), afspraken: "", opmerkingMedewerker: "", opmerkingBeoordelaar: "" });
     },
     onError: () => {
       toast({ title: "Opslaan mislukt", variant: "destructive" });
@@ -1059,7 +1060,7 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
       return;
     }
     const emp = users?.find(u => u.id === selectedUserId);
-    const year = new Date(formData.datum).getFullYear();
+    const year = formData.beoordelingsJaar;
     const scores = Object.entries(formScores).map(([competencyId, data]) => ({
       competencyId,
       score: data.score,
@@ -1092,6 +1093,7 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
       beoordelaar: review.beoordelaar || "",
       datum: review.datum,
       periode: review.periode || "",
+      beoordelingsJaar: review.year,
       afspraken: review.afspraken || "",
       opmerkingMedewerker: review.opmerkingMedewerker || "",
       opmerkingBeoordelaar: review.opmerkingBeoordelaar || "",
@@ -1515,16 +1517,29 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
                   data-testid="input-beoor-datum"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelingsperiode</label>
-                <Input
-                  value={formData.periode}
-                  onChange={e => setFormData(prev => ({ ...prev, periode: e.target.value }))}
-                  placeholder="bijv. jan 2025 - dec 2025"
-                  readOnly={isReadOnly}
-                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
-                  data-testid="input-beoor-periode"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelingsperiode</label>
+                  <Input
+                    value={formData.periode}
+                    onChange={e => setFormData(prev => ({ ...prev, periode: e.target.value }))}
+                    placeholder="bijv. jan 2025 - dec 2025"
+                    readOnly={isReadOnly}
+                    className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                    data-testid="input-beoor-periode"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelingsjaar</label>
+                  <Input
+                    type="number"
+                    value={formData.beoordelingsJaar}
+                    onChange={e => setFormData(prev => ({ ...prev, beoordelingsJaar: parseInt(e.target.value) || new Date().getFullYear() }))}
+                    readOnly={isReadOnly}
+                    className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                    data-testid="input-beoor-jaar"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
