@@ -292,6 +292,11 @@
 }
 
 @media print {
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+
   body {
     background: white !important;
     color: black !important;
@@ -299,22 +304,44 @@
     print-color-adjust: exact;
   }
 
-  nav, header, .print\\:hidden,
-  [data-testid="app-sidebar"],
-  .sidebar-wrapper {
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-sidebar="sidebar"],
+  [data-sidebar="rail"],
+  [data-sidebar="trigger"],
+  nav, header,
+  .print\\:hidden {
     display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
   }
 
-  main, .main-content {
+  [data-slot="sidebar-wrapper"] {
+    --sidebar-width: 0px !important;
+    --sidebar-width-icon: 0px !important;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  main, .main-content, .main-content-area {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    overflow: visible !important;
+    height: auto !important;
   }
 
   * {
     background-color: transparent !important;
     color: black !important;
+    overflow: visible !important;
   }
 
   .print\\:bg-white {
@@ -331,22 +358,5 @@
 
   [class*="card"], [class*="Card"] {
     background-color: white !important;
-  }
-
-  textarea, input {
-    border: none !important;
-    border-bottom: 1px solid #999 !important;
-    border-radius: 0 !important;
-    padding-left: 0 !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    resize: none !important;
-    overflow: visible !important;
-    height: auto !important;
-  }
-
-  @page {
-    margin: 1.5cm;
-    size: A4;
   }
 }
