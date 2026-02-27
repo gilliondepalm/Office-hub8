@@ -837,10 +837,10 @@ export async function registerRoutes(
 
   app.post("/api/functionering", requireAuth, async (req, res) => {
     try {
-      const parsed = insertFunctioneringReviewSchema.parse(req.body);
-      const existing = await storage.getFunctioneringReviewByUserAndYear(parsed.userId, parsed.year);
-      if (existing) {
-        const updated = await storage.updateFunctioneringReview(existing.id, parsed);
+      const { editId, functioneringsJaar, ...rest } = req.body;
+      const parsed = insertFunctioneringReviewSchema.parse(rest);
+      if (editId) {
+        const updated = await storage.updateFunctioneringReview(editId, parsed);
         res.json(updated);
       } else {
         const review = await storage.createFunctioneringReview(parsed);

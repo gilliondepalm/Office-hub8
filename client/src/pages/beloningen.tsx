@@ -66,6 +66,10 @@ function ReadOnlyFunctioneringForm({ review }: { review: FunctioneringReview }) 
               <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelingsperiode</label>
               <p className="text-sm border-b border-border/60 pb-1 print:border-b print:border-gray-400">{fieldValue(review.periode)}</p>
             </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground print:text-black">Functioneringsjaar</label>
+              <p className="text-sm border-b border-border/60 pb-1 print:border-b print:border-gray-400">{review.year}</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -227,6 +231,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
     leidinggevende: "",
     datum: format(new Date(), "yyyy-MM-dd"),
     periode: "",
+    functioneringsJaar: new Date().getFullYear(),
     terugblikTaken: "",
     terugblikResultaten: "",
     terugblikKnelpunten: "",
@@ -274,6 +279,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
       queryClient.invalidateQueries({ queryKey: ["/api/functionering"] });
       queryClient.invalidateQueries({ queryKey: ["/api/functionering/mine"] });
       toast({ title: "Functioneringsgesprek opgeslagen" });
+      handleBackToOverview();
     },
     onError: () => {
       toast({ title: "Opslaan mislukt", variant: "destructive" });
@@ -324,11 +330,12 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
     const userId = selectedUserId || currentUser?.id;
     if (!userId) return;
 
-    const year = new Date(formData.datum).getFullYear();
+    const year = formData.functioneringsJaar;
     saveMutation.mutate({
       ...formData,
       userId,
       year,
+      editId: viewingReview?.id,
       createdBy: currentUser?.id,
     });
   };
@@ -342,6 +349,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
       leidinggevende: review.leidinggevende || "",
       datum: review.datum,
       periode: review.periode || "",
+      functioneringsJaar: review.year,
       terugblikTaken: review.terugblikTaken || "",
       terugblikResultaten: review.terugblikResultaten || "",
       terugblikKnelpunten: review.terugblikKnelpunten || "",
@@ -423,10 +431,10 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-2">
             {reviewsToShow.map((review) => (
-              <div key={review.id} data-testid={`review-card-${review.id}`}>
-                <div className="flex items-center justify-between mb-3 print:hidden">
+              <Card key={review.id} className="border border-border/60" data-testid={`review-card-${review.id}`}>
+                <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                       <ClipboardCheck className="h-4 w-4" />
@@ -443,21 +451,18 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleViewReview(review)} data-testid={`button-view-review-${review.id}`}>
+                      <Eye className="h-4 w-4 mr-1" />
+                      Bekijken
+                    </Button>
                     {isAdmin && (
-                      <>
-                        <Button variant="outline" size="sm" onClick={() => handleViewReview(review)} data-testid={`button-edit-review-${review.id}`}>
-                          <Pencil className="h-4 w-4 mr-1" />
-                          Bewerken
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate(review.id)} data-testid={`button-delete-review-${review.id}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
+                      <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate(review.id)} data-testid={`button-delete-review-${review.id}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
-                </div>
-                <ReadOnlyFunctioneringForm review={review} />
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
@@ -599,16 +604,29 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
                   data-testid="input-func-datum"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelingsperiode</label>
-                <Input
-                  value={formData.periode}
-                  onChange={(e) => updateField("periode", e.target.value)}
-                  readOnly={!isAdmin}
-                  placeholder="bijv. jan 2025 - dec 2025"
-                  className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
-                  data-testid="input-func-periode"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground print:text-black">Beoordelingsperiode</label>
+                  <Input
+                    value={formData.periode}
+                    onChange={(e) => updateField("periode", e.target.value)}
+                    readOnly={!isAdmin}
+                    placeholder="bijv. jan 2025 - dec 2025"
+                    className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                    data-testid="input-func-periode"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground print:text-black">Functioneringsjaar</label>
+                  <Input
+                    type="number"
+                    value={formData.functioneringsJaar}
+                    onChange={e => setFormData(prev => ({ ...prev, functioneringsJaar: parseInt(e.target.value) || new Date().getFullYear() }))}
+                    readOnly={!isAdmin}
+                    className="print:border-0 print:border-b print:rounded-none print:px-0 print:shadow-none"
+                    data-testid="input-func-jaar"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
@@ -879,7 +897,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
           ...formData,
           id: viewingReview?.id || "",
           userId: viewingReview?.userId || selectedUserId || "",
-          year: viewingReview?.year || new Date().getFullYear(),
+          year: formData.functioneringsJaar,
           createdBy: viewingReview?.createdBy || currentUser?.id || "",
           createdAt: viewingReview?.createdAt || new Date().toISOString(),
           updatedAt: viewingReview?.updatedAt || null,
