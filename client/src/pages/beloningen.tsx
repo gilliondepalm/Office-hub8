@@ -1258,20 +1258,19 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
                               </Button>
                             </div>
                           </div>
-                          {(comp.norm1 || comp.norm2 || comp.norm3 || comp.norm4 || comp.norm5) && (
-                            <div className="mt-2 pl-4 space-y-1">
-                              {[1, 2, 3, 4, 5].map(n => {
-                                const normVal = (comp as any)[`norm${n}`];
-                                return normVal ? (
-                                  <div key={n} className="flex items-start gap-2 text-xs text-muted-foreground">
-                                    <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px] mt-0.5">{n}</Badge>
-                                    <span className="shrink-0 font-medium min-w-[12rem]">{normLabels[n]}</span>
-                                    <span>{normVal}</span>
-                                  </div>
-                                ) : null;
-                              })}
-                            </div>
-                          )}
+                          <div className="mt-3 pl-4 space-y-1.5 border-t pt-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Normering:</p>
+                            {[1, 2, 3, 4, 5].map(n => {
+                              const normVal = (comp as any)[`norm${n}`];
+                              return (
+                                <div key={n} className="flex items-start gap-2 text-xs">
+                                  <Badge variant="outline" className="shrink-0 w-6 justify-center text-[10px] mt-0.5">{n}</Badge>
+                                  <span className="shrink-0 font-medium text-muted-foreground min-w-[12rem]">{normLabels[n]}</span>
+                                  <span className={normVal ? "text-foreground" : "text-muted-foreground/50 italic"}>{normVal || "—"}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </CardContent>
