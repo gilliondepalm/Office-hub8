@@ -935,13 +935,12 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Geen toegang" });
     }
     try {
-      const { scores, ...reviewData } = req.body;
+      const { scores, editId, ...reviewData } = req.body;
       const parsed = insertBeoordelingReviewSchema.parse(reviewData);
-      const existing = await storage.getBeoordelingReviewByUserAndYear(parsed.userId, parsed.year);
       let review;
-      if (existing) {
-        review = await storage.updateBeoordelingReview(existing.id, parsed);
-        await storage.deleteBeoordelingScoresByReview(existing.id);
+      if (editId) {
+        review = await storage.updateBeoordelingReview(editId, parsed);
+        await storage.deleteBeoordelingScoresByReview(editId);
       } else {
         review = await storage.createBeoordelingReview(parsed);
       }

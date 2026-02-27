@@ -977,6 +977,12 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
       queryClient.invalidateQueries({ queryKey: ["/api/beoordeling"] });
       queryClient.invalidateQueries({ queryKey: ["/api/beoordeling/mine"] });
       toast({ title: "Beoordeling opgeslagen" });
+      setViewMode("overview");
+      setViewingReview(null);
+      setSelectedUserId("");
+      setSelectedFunctie("");
+      setFormScores({});
+      setFormData({ beoordelaar: "", datum: format(new Date(), "yyyy-MM-dd"), periode: "", afspraken: "", opmerkingMedewerker: "", opmerkingBeoordelaar: "" });
     },
     onError: () => {
       toast({ title: "Opslaan mislukt", variant: "destructive" });
@@ -1074,6 +1080,7 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
       opmerkingBeoordelaar: formData.opmerkingBeoordelaar,
       createdBy: currentUser?.id,
       scores,
+      ...(viewingReview ? { editId: viewingReview.id } : {}),
     });
   };
 
