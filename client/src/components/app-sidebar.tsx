@@ -29,6 +29,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@shared/schema";
 import type { Message } from "@shared/schema";
 
 const menuItems = [
@@ -73,7 +74,7 @@ export function AppSidebar() {
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-sidebar-foreground">Kantoor Dashboard</span>
             <span className="text-xs text-sidebar-foreground/60">
-              {user?.role === "admin" ? "Beheerportaal" : "Medewerkersportaal"}
+              {isAdminRole(user?.role) ? "Beheerportaal" : "Medewerkersportaal"}
             </span>
           </div>
         </div>
@@ -120,7 +121,7 @@ export function AppSidebar() {
               </Avatar>
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="text-sm font-medium truncate text-sidebar-foreground">{user?.fullName}</span>
-                <span className="text-xs text-sidebar-foreground/60 capitalize">{user?.role === "admin" ? "Beheerder" : user?.role === "manager" ? "Manager" : "Medewerker"}</span>
+                <span className="text-xs text-sidebar-foreground/60 capitalize">{user?.role === "directeur" ? "Directeur" : user?.role === "admin" ? "Beheerder" : user?.role === "manager" ? "Manager" : "Medewerker"}</span>
               </div>
               <Button
                 size="icon"

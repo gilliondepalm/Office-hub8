@@ -29,6 +29,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Application, AppAccess, User } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@shared/schema";
 
 const appFormSchema = z.object({
   name: z.string().min(1, "Naam is verplicht"),
@@ -48,7 +49,7 @@ export default function ApplicatiesPage() {
   const [accessOpen, setAccessOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const { data: applications, isLoading } = useQuery<Application[]>({
     queryKey: ["/api/applications"],

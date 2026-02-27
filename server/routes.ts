@@ -16,6 +16,7 @@ import {
   insertPersonalDevelopmentSchema, insertLegislationLinkSchema, insertCaoDocumentSchema,
   insertFunctioneringReviewSchema,
   insertCompetencySchema, insertBeoordelingReviewSchema, insertBeoordelingScoreSchema,
+  isAdminRole,
 } from "@shared/schema";
 
 const PgStore = pgSession(session);
@@ -106,7 +107,7 @@ export async function registerRoutes(
     const userId = (req.session as any).userId;
     if (!userId) return res.status(401).json({ message: "Niet ingelogd" });
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Geen toegang - alleen beheerders" });
     }
     next();
@@ -196,7 +197,7 @@ export async function registerRoutes(
   app.post("/api/uploads/wetgeving", requireAuth, wetgevingUpload.single("pdf"), async (req: any, res) => {
     const userId = (req.session as any).userId;
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Alleen beheerders" });
     }
     if (!req.file) {
@@ -239,7 +240,7 @@ export async function registerRoutes(
   app.post("/api/uploads/cao", requireAuth, caoUpload.single("pdf"), async (req: any, res) => {
     const userId = (req.session as any).userId;
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Alleen beheerders" });
     }
     if (!req.file) {
@@ -251,7 +252,7 @@ export async function registerRoutes(
   app.delete("/api/uploads/cao/:filename", requireAuth, async (req: any, res) => {
     const userId = (req.session as any).userId;
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Alleen beheerders" });
     }
     const filename = req.params.filename.replace(/[^a-zA-Z0-9._\- ]/g, "");
@@ -267,7 +268,7 @@ export async function registerRoutes(
   app.delete("/api/uploads/wetgeving/:filename", requireAuth, async (req: any, res) => {
     const userId = (req.session as any).userId;
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Alleen beheerders" });
     }
     const filename = req.params.filename.replace(/[^a-zA-Z0-9._\- ]/g, "");
@@ -314,7 +315,7 @@ export async function registerRoutes(
   app.post("/api/uploads/nieuwsbrief", requireAuth, nieuwsbriefUpload.single("pdf"), async (req: any, res) => {
     const userId = (req.session as any).userId;
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Alleen beheerders" });
     }
     if (!req.file) {
@@ -326,7 +327,7 @@ export async function registerRoutes(
   app.delete("/api/uploads/nieuwsbrief/:filename", requireAuth, async (req: any, res) => {
     const userId = (req.session as any).userId;
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Alleen beheerders" });
     }
     const filename = req.params.filename.replace(/[^a-zA-Z0-9._\- ]/g, "");
@@ -355,7 +356,7 @@ export async function registerRoutes(
         .map((d: any) => d.name)
         .sort();
 
-      const visibleDepts = user.role === "admin"
+      const visibleDepts = isAdminRole(user.role)
         ? allDepts
         : allDepts.filter((d: string) => d === user.department);
 
@@ -372,7 +373,7 @@ export async function registerRoutes(
         result[dept] = files;
       }
 
-      if (user.role !== "admin" && user.department && !result[user.department]) {
+      if (!isAdminRole(user.role) && user.department && !result[user.department]) {
         result[user.department] = [];
       }
 
@@ -401,7 +402,7 @@ export async function registerRoutes(
   app.post("/api/uploads/instructies/:department", requireAuth, instructiesUpload.single("pdf"), async (req: any, res) => {
     const userId = (req.session as any).userId;
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Alleen beheerders" });
     }
     if (!req.file) {
@@ -414,7 +415,7 @@ export async function registerRoutes(
   app.delete("/api/uploads/instructies/:department/:filename", requireAuth, async (req: any, res) => {
     const userId = (req.session as any).userId;
     const user = await storage.getUser(userId);
-    if (!user || user.role !== "admin") {
+    if (!user || !isAdminRole(user.role)) {
       return res.status(403).json({ message: "Alleen beheerders" });
     }
     const dept = req.params.department;
@@ -709,7 +710,7 @@ export async function registerRoutes(
     const currentUser = await storage.getUser(userId);
     if (!currentUser) return res.status(401).json({ message: "Niet ingelogd" });
 
-    if (currentUser.role === "admin") {
+    if (isAdminRole(currentUser.role)) {
       const all = await storage.getAbsences();
       return res.json(all);
     }
@@ -756,14 +757,15 @@ export async function registerRoutes(
 
       const absenceUser = await storage.getUser(absence.userId);
 
-      if (currentUser.role === "manager") {
-        if (absenceUser?.role === "manager" || absenceUser?.role === "admin") {
-          return res.status(403).json({ message: "Alleen de directeur kan manageraanvragen goedkeuren" });
+      if ((absenceUser && isAdminRole(absenceUser.role)) || absenceUser?.role === "manager") {
+        if (currentUser.role !== "directeur") {
+          return res.status(403).json({ message: "Alleen de directeur kan verzuimverzoeken van beheerders en managers goedkeuren" });
         }
+      } else if (currentUser.role === "manager") {
         if (absenceUser?.department !== currentUser.department) {
           return res.status(403).json({ message: "U kunt alleen verzuim van uw eigen afdeling goedkeuren" });
         }
-      } else if (currentUser.role !== "admin") {
+      } else if (!isAdminRole(currentUser.role)) {
         return res.status(403).json({ message: "Geen rechten om verzuim goed te keuren" });
       }
 
@@ -868,7 +870,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/competencies", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+    if (!isAdminRole((req as any).user.role) && (req as any).user.role !== "manager") {
       return res.status(403).json({ message: "Geen toegang" });
     }
     try {
@@ -881,7 +883,7 @@ export async function registerRoutes(
   });
 
   app.put("/api/competencies/:id", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+    if (!isAdminRole((req as any).user.role) && (req as any).user.role !== "manager") {
       return res.status(403).json({ message: "Geen toegang" });
     }
     try {
@@ -893,7 +895,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/competencies/:id", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+    if (!isAdminRole((req as any).user.role) && (req as any).user.role !== "manager") {
       return res.status(403).json({ message: "Geen toegang" });
     }
     await storage.deleteCompetency(req.params.id);
@@ -923,7 +925,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/beoordeling", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+    if (!isAdminRole((req as any).user.role) && (req as any).user.role !== "manager") {
       return res.status(403).json({ message: "Geen toegang" });
     }
     try {
@@ -955,7 +957,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/beoordeling/:id", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin" && (req as any).user.role !== "manager") {
+    if (!isAdminRole((req as any).user.role) && (req as any).user.role !== "manager") {
       return res.status(403).json({ message: "Geen toegang" });
     }
     await storage.deleteBeoordelingReview(req.params.id);
@@ -968,7 +970,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/applications", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin") return res.status(403).json({ message: "Alleen admin" });
+    if (!isAdminRole((req as any).user.role)) return res.status(403).json({ message: "Alleen admin" });
     try {
       const parsed = insertApplicationSchema.parse(req.body);
       const app2 = await storage.createApplication(parsed);
@@ -979,7 +981,7 @@ export async function registerRoutes(
   });
 
   app.patch("/api/applications/:id", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin") return res.status(403).json({ message: "Alleen admin" });
+    if (!isAdminRole((req as any).user.role)) return res.status(403).json({ message: "Alleen admin" });
     try {
       const app2 = await storage.updateApplication(req.params.id, req.body);
       res.json(app2);
@@ -989,7 +991,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/applications/:id", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin") return res.status(403).json({ message: "Alleen admin" });
+    if (!isAdminRole((req as any).user.role)) return res.status(403).json({ message: "Alleen admin" });
     await storage.deleteApplication(req.params.id);
     res.json({ message: "Verwijderd" });
   });
@@ -1000,7 +1002,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/app-access", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin") return res.status(403).json({ message: "Alleen admin" });
+    if (!isAdminRole((req as any).user.role)) return res.status(403).json({ message: "Alleen admin" });
     try {
       const parsed = insertAppAccessSchema.parse(req.body);
       const access = await storage.createAppAccess(parsed);
@@ -1011,7 +1013,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/app-access/:id", requireAuth, async (req, res) => {
-    if ((req as any).user.role !== "admin") return res.status(403).json({ message: "Alleen admin" });
+    if (!isAdminRole((req as any).user.role)) return res.status(403).json({ message: "Alleen admin" });
     await storage.deleteAppAccess(req.params.id);
     res.json({ message: "Verwijderd" });
   });
@@ -1026,7 +1028,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const user = await storage.getUser(userId);
-      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+      if (!user || (!isAdminRole(user.role) && user.role !== "manager")) {
         return res.status(403).json({ message: "Alleen beheerders en managers mogen berichten sturen" });
       }
       const parsed = insertMessageSchema.parse({ ...req.body, fromUserId: userId });
@@ -1084,7 +1086,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
+      if (!user || !isAdminRole(user.role)) {
         return res.status(403).json({ message: "Alleen beheerders" });
       }
       const parsed = insertAoProcedureSchema.parse(req.body);
@@ -1110,7 +1112,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
+      if (!user || !isAdminRole(user.role)) {
         return res.status(403).json({ message: "Alleen beheerders" });
       }
       const parsed = insertAoInstructionSchema.parse(req.body);
@@ -1137,7 +1139,7 @@ export async function registerRoutes(
     const currentUserId = (req.session as any).userId;
     const currentUser = await storage.getUser(currentUserId);
     if (!currentUser) return res.status(401).json({ message: "Niet ingelogd" });
-    if (currentUser.role !== "admin" && currentUserId !== req.params.userId) {
+    if (!isAdminRole(currentUser.role) && currentUserId !== req.params.userId) {
       return res.status(403).json({ message: "Geen toegang" });
     }
     const history = await storage.getPositionHistoryByUser(req.params.userId);
@@ -1184,7 +1186,7 @@ export async function registerRoutes(
     const currentUserId = (req.session as any).userId;
     const currentUser = await storage.getUser(currentUserId);
     if (!currentUser) return res.status(401).json({ message: "Niet ingelogd" });
-    if (currentUser.role !== "admin" && currentUserId !== req.params.userId) {
+    if (!isAdminRole(currentUser.role) && currentUserId !== req.params.userId) {
       return res.status(403).json({ message: "Geen toegang" });
     }
     const entries = await storage.getPersonalDevelopmentByUser(req.params.userId);
@@ -1225,7 +1227,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
+      if (!user || !isAdminRole(user.role)) {
         return res.status(403).json({ message: "Alleen beheerders" });
       }
       const body = {
@@ -1257,7 +1259,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
+      if (!user || !isAdminRole(user.role)) {
         return res.status(403).json({ message: "Alleen beheerders" });
       }
       const parsed = insertCaoDocumentSchema.parse(req.body);
@@ -1297,7 +1299,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
+      if (!user || !isAdminRole(user.role)) {
         return res.status(403).json({ message: "Alleen beheerders" });
       }
       if (!req.file) {
@@ -1315,7 +1317,7 @@ export async function registerRoutes(
     try {
       const userId = (req.session as any).userId;
       const user = await storage.getUser(userId);
-      if (!user || user.role !== "admin") {
+      if (!user || !isAdminRole(user.role)) {
         return res.status(403).json({ message: "Alleen beheerders" });
       }
       if (!req.file) {

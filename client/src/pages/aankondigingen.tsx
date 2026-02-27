@@ -26,6 +26,7 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import type { Announcement, Message, User } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@shared/schema";
 
 const announcementFormSchema = z.object({
   title: z.string().min(1, "Titel is verplicht"),
@@ -478,7 +479,7 @@ export default function AankondigingenPage() {
 
   const unreadCount = (messagesData || []).filter(m => m.toUserId === user?.id && !m.read).length;
 
-  const isAdminOrManager = user?.role === "admin" || user?.role === "manager";
+  const isAdminOrManager = isAdminRole(user?.role) || user?.role === "manager";
 
   if (isLoading) {
     return (
@@ -715,7 +716,7 @@ function NieuwsbrievenTab() {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   type NieuwsbriefFile = { name: string; path: string; size: number; modified: string };
 

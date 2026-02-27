@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import type { Announcement, Absence } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@shared/schema";
 import { useRef } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +57,7 @@ function StatCard({
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loginFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();

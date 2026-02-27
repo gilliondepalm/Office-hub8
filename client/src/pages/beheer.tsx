@@ -167,12 +167,14 @@ export default function BeheerPage() {
   };
 
   const roleLabels: Record<string, string> = {
+    directeur: "Directeur",
     admin: "Beheerder",
     manager: "Manager",
     employee: "Medewerker",
   };
 
   const roleBadgeVariant = (role: string) => {
+    if (role === "directeur") return "default" as const;
     if (role === "admin") return "default" as const;
     if (role === "manager") return "secondary" as const;
     return "outline" as const;

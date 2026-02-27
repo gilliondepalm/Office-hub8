@@ -29,6 +29,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Department, User, AoProcedure, AoInstruction, LegislationLink, CaoDocument } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@shared/schema";
 
 const departmentFormSchema = z.object({
   name: z.string().min(1, "Naam is verplicht"),
@@ -151,7 +152,7 @@ function AfdelingenTab() {
 
   return (
     <div className="space-y-4">
-      {user?.role === "admin" && (
+      {isAdminRole(user?.role) && (
         <div className="flex justify-end">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -227,7 +228,7 @@ function AfdelingenTab() {
                         </div>
                       </div>
                     </div>
-                    {user?.role === "admin" && (
+                    {isAdminRole(user?.role) && (
                       <div className="flex gap-1">
                         <Button size="icon" variant="ghost" onClick={() => openEdit(dept)} data-testid={`button-edit-department-${dept.id}`}>
                           <Pencil className="h-4 w-4 text-muted-foreground" />
@@ -291,7 +292,7 @@ function AoProceduresTab() {
   const [selectedProcId, setSelectedProcId] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const { data: departments } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
@@ -628,9 +629,9 @@ function OrganogramTab() {
     return <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-20" />)}</div>;
   }
 
-  const directeur = users.find((u) => u.role === "admin" && u.username === "directeur");
+  const directeur = users.find((u) => u.role === "directeur" || (isAdminRole(u.role) && u.username === "directeur"));
   const deptManagerIds = new Set(departments.map((d) => d.managerId).filter(Boolean));
-  const stafAdmins = users.filter((u) => u.role === "admin" && u.username !== "directeur" && !deptManagerIds.has(u.id));
+  const stafAdmins = users.filter((u) => isAdminRole(u.role) && u.role !== "directeur" && u.username !== "directeur" && !deptManagerIds.has(u.id));
 
   return (
     <div className="space-y-6">
@@ -718,7 +719,7 @@ function CaoInfoTab() {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   type CaoFile = { name: string; path: string; size: number; modified: string };
 
@@ -858,7 +859,7 @@ function InstructiesTab() {
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   const { data: departments } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
@@ -1039,7 +1040,7 @@ function WetgevingTab() {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
 
   type WetgevingFile = { name: string; path: string; size: number; modified: string };
 
@@ -1172,7 +1173,7 @@ function WetgevingTab() {
 
 export default function OrganisatiePage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const [activeTab, setActiveTab] = useState("organogram");
 
   const tabs = [

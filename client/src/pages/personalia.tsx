@@ -29,6 +29,7 @@ import { nl } from "date-fns/locale";
 import type { User, Department, PositionHistory, PersonalDevelopment } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@shared/schema";
 
 const userFormSchema = z.object({
   username: z.string().min(1, "Gebruikersnaam is verplicht"),
@@ -168,6 +169,7 @@ function EditDialog({
                       <SelectItem value="employee">Medewerker</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="admin">Beheerder</SelectItem>
+                      <SelectItem value="directeur">Directeur</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -997,9 +999,9 @@ export default function PersonaliaPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-personalia-title">Personalia</h1>
-          <p className="text-muted-foreground text-sm">{currentUser?.role === "admin" ? "Overzicht van alle medewerkers" : "Uw persoonlijke gegevens"}</p>
+          <p className="text-muted-foreground text-sm">{isAdminRole(currentUser?.role) ? "Overzicht van alle medewerkers" : "Uw persoonlijke gegevens"}</p>
         </div>
-        {currentUser?.role === "admin" && (
+        {isAdminRole(currentUser?.role) && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-user">
@@ -1057,6 +1059,7 @@ export default function PersonaliaPage() {
                             <SelectItem value="employee">Medewerker</SelectItem>
                             <SelectItem value="manager">Manager</SelectItem>
                             <SelectItem value="admin">Beheerder</SelectItem>
+                            <SelectItem value="directeur">Directeur</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1141,7 +1144,7 @@ export default function PersonaliaPage() {
           user={historyUser}
           open={!!historyUser}
           onOpenChange={(open) => { if (!open) setHistoryUser(null); }}
-          isAdmin={currentUser?.role === "admin"}
+          isAdmin={isAdminRole(currentUser?.role)}
         />
       )}
 
@@ -1150,12 +1153,12 @@ export default function PersonaliaPage() {
           user={devUser}
           open={!!devUser}
           onOpenChange={(open) => { if (!open) setDevUser(null); }}
-          isAdmin={currentUser?.role === "admin"}
+          isAdmin={isAdminRole(currentUser?.role)}
         />
       )}
 
       {(() => {
-        const visibleUsers = currentUser?.role === "admin" ? users : users?.filter(u => u.id === currentUser?.id);
+        const visibleUsers = isAdminRole(currentUser?.role) ? users : users?.filter(u => u.id === currentUser?.id);
         if (!visibleUsers || visibleUsers.length === 0) return (
           <Card>
             <CardContent className="flex flex-col items-center py-12">
@@ -1180,8 +1183,8 @@ export default function PersonaliaPage() {
 
           sortedDeptNames.forEach((dept) => {
             grouped[dept].sort((a, b) => {
-              const aIsManager = a.role === "manager" || a.role === "admin";
-              const bIsManager = b.role === "manager" || b.role === "admin";
+              const aIsManager = a.role === "manager" || isAdminRole(a.role);
+              const bIsManager = b.role === "manager" || isAdminRole(b.role);
               if (aIsManager && !bIsManager) return -1;
               if (!aIsManager && bIsManager) return 1;
               return a.fullName.localeCompare(b.fullName, "nl");
@@ -1217,7 +1220,7 @@ export default function PersonaliaPage() {
                           <TableBody>
                             {grouped[deptName].map((u) => {
                               const initials = u.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-                              const isManager = u.role === "manager" || u.role === "admin";
+                              const isManager = u.role === "manager" || isAdminRole(u.role);
                               return (
                                 <TableRow key={u.id} className={!u.active ? "opacity-60" : ""} data-testid={`row-user-${u.id}`}>
                                   <TableCell>
@@ -1285,7 +1288,7 @@ export default function PersonaliaPage() {
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center justify-end gap-1">
-                                      {(currentUser?.role === "admin" || currentUser?.id === u.id) && (
+                                      {(isAdminRole(currentUser?.role) || currentUser?.id === u.id) && (
                                         <>
                                           <Button
                                             size="icon"
@@ -1307,7 +1310,7 @@ export default function PersonaliaPage() {
                                           </Button>
                                         </>
                                       )}
-                                      {currentUser?.role === "admin" && (
+                                      {isAdminRole(currentUser?.role) && (
                                         <>
                                           <Button
                                             size="icon"

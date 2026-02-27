@@ -31,6 +31,7 @@ import {
 import { nl } from "date-fns/locale";
 import type { Event, User } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@shared/schema";
 
 const eventFormSchema = z.object({
   title: z.string().min(1, "Titel is verplicht"),
@@ -426,7 +427,7 @@ export default function KalenderPage() {
     },
   });
 
-  const canManage = user?.role === "admin" || user?.role === "manager";
+  const canManage = isAdminRole(user?.role) || user?.role === "manager";
 
   const allEntries = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -506,7 +507,7 @@ export default function KalenderPage() {
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-kalender-title">Evenementen Kalender</h1>
         </div>
-        {(user?.role === "admin" || user?.role === "manager") && (
+        {(isAdminRole(user?.role) || user?.role === "manager") && (
           <Button onClick={() => { setCreateDate(""); setCreateOpen(true); }} data-testid="button-add-event">
             <Plus className="h-4 w-4 mr-2" />
             Nieuw Evenement

@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import type { Absence } from "@shared/schema";
+import { isAdminRole } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 
 const BVVD_REASONS = [
@@ -163,8 +164,8 @@ export default function VerzuimPage() {
     rejected: { label: "Afgewezen", variant: "destructive", icon: XCircle },
   };
 
-  const isAdmin = user?.role === "admin";
-  const isAdminOrManager = user?.role === "admin" || user?.role === "manager";
+  const isAdmin = isAdminRole(user?.role);
+  const isAdminOrManager = isAdminRole(user?.role) || user?.role === "manager";
 
   const myBalance = vacationBalances?.find(b => b.userId === user?.id);
 
@@ -488,7 +489,8 @@ export default function VerzuimPage() {
                                   {isAdminOrManager && (
                                     <TableCell>
                                       {absence.status === "pending" && absence.userId !== user?.id && (
-                                        user?.role === "admin" ||
+                                        user?.role === "directeur" ||
+                                        (isAdminRole(user?.role) && !isAdminRole((absence as any).userRole) && (absence as any).userRole !== "manager") ||
                                         (user?.role === "manager" && (absence as any).userRole === "employee")
                                       ) && (
                                         <div className="flex gap-1">

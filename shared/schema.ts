@@ -3,7 +3,7 @@ import { pgTable, text, varchar, integer, boolean, date, timestamp, pgEnum } fro
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const roleEnum = pgEnum("role", ["admin", "manager", "employee"]);
+export const roleEnum = pgEnum("role", ["directeur", "admin", "manager", "employee"]);
 export const absenceTypeEnum = pgEnum("absence_type", ["sick", "vacation", "personal", "other", "bvvd"]);
 export const absenceStatusEnum = pgEnum("absence_status", ["pending", "approved", "rejected"]);
 
@@ -300,3 +300,7 @@ export type InsertBeoordelingReview = z.infer<typeof insertBeoordelingReviewSche
 export type BeoordelingReview = typeof beoordelingReviews.$inferSelect;
 export type InsertBeoordelingScore = z.infer<typeof insertBeoordelingScoreSchema>;
 export type BeoordelingScore = typeof beoordelingScores.$inferSelect;
+
+export function isAdminRole(role?: string | null): boolean {
+  return role === "admin" || role === "directeur";
+}

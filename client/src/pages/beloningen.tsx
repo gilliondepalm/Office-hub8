@@ -26,10 +26,11 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import type { Reward, User, FunctioneringReview, Competency, BeoordelingReview, BeoordelingScore } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { isAdminRole } from "@shared/schema";
 
 function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser?: User | null }) {
   const { toast } = useToast();
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = isAdminRole(currentUser?.role);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"form" | "overview">("overview");
@@ -125,7 +126,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
       setFormData(prev => ({
         ...prev,
         medewerker: emp.fullName,
-        functie: emp.role === "admin" ? "Beheerder" : emp.role === "manager" ? "Manager" : "Medewerker",
+        functie: emp.role === "directeur" ? "Directeur" : emp.role === "admin" ? "Beheerder" : emp.role === "manager" ? "Manager" : "Medewerker",
         afdeling: emp.department || "",
       }));
     }
@@ -385,7 +386,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
                         <SelectValue placeholder="Kies..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {users?.filter(u => u.active && (u.role === "manager" || u.role === "admin")).map(u => (
+                        {users?.filter(u => u.active && (u.role === "manager" || isAdminRole(u.role))).map(u => (
                           <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
                         ))}
                       </SelectContent>
@@ -704,7 +705,7 @@ function FunctioneringForm({ users, currentUser }: { users?: User[]; currentUser
 
 function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUser?: User | null }) {
   const { toast } = useToast();
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = isAdminRole(currentUser?.role);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [selectedFunctie, setSelectedFunctie] = useState<string>("");
@@ -1288,7 +1289,7 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
                         <SelectValue placeholder="Kies..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {users?.filter(u => u.active && (u.role === "manager" || u.role === "admin")).map(u => (
+                        {users?.filter(u => u.active && (u.role === "manager" || isAdminRole(u.role))).map(u => (
                           <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
                         ))}
                       </SelectContent>
@@ -1598,7 +1599,7 @@ export default function BeloningenPage() {
           <h1 className="text-2xl font-bold" data-testid="text-beloningen-title">Beloningen</h1>
           <p className="text-muted-foreground text-sm">Functionering, beoordeling en beloning</p>
         </div>
-        {activeTab === "beloningsysteem" && user?.role === "admin" && (
+        {activeTab === "beloningsysteem" && isAdminRole(user?.role) && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-reward">
@@ -1677,7 +1678,7 @@ export default function BeloningenPage() {
           <UserCheck className="h-4 w-4 inline mr-1.5 -mt-0.5" />
           Beoordeling
         </button>
-        {user?.role === "admin" && (
+        {isAdminRole(user?.role) && (
           <button
             onClick={() => setActiveTab("beloningsysteem")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -1701,7 +1702,7 @@ export default function BeloningenPage() {
         <BeoordelingSection users={users} currentUser={user} />
       )}
 
-      {activeTab === "beloningsysteem" && user?.role === "admin" && (
+      {activeTab === "beloningsysteem" && isAdminRole(user?.role) && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center gap-2 pb-3">
