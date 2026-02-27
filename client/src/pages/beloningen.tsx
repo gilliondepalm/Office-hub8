@@ -2018,7 +2018,7 @@ function JaarplanSection({ users, currentUser }: { users?: User[]; currentUser?:
     enabled: isAdmin,
   });
 
-  const { data: myItems } = useQuery<JaarplanItem[]>({
+  const { data: myItems } = useQuery<(JaarplanItem & { userName?: string })[]>({
     queryKey: ["/api/jaarplan/mine"],
     enabled: !isAdmin,
   });
