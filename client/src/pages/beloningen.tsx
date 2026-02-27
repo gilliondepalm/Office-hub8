@@ -2144,14 +2144,39 @@ function JaarplanSection({ users, currentUser }: { users?: User[]; currentUser?:
                 </Select>
               </div>
               <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground">Afspraken</label>
-                <Textarea
-                  value={formData.afspraken}
-                  onChange={e => setFormData(prev => ({ ...prev, afspraken: e.target.value }))}
-                  placeholder="Beschrijf de afspraken..."
-                  rows={3}
-                  data-testid="input-jaarplan-afspraken"
-                />
+                <label className="text-xs font-medium text-muted-foreground">Plan</label>
+                {(() => {
+                  const userPlans = [...new Set(
+                    (isAdmin ? itemsByYear : myItems)
+                      ?.filter(i => i.userId === selectedUserId)
+                      .map(i => i.afspraken) || []
+                  )].sort();
+                  return (
+                    <div className="space-y-2">
+                      {userPlans.length > 0 && (
+                        <Select
+                          value={userPlans.includes(formData.afspraken) ? formData.afspraken : ""}
+                          onValueChange={v => setFormData(prev => ({ ...prev, afspraken: v }))}
+                        >
+                          <SelectTrigger data-testid="select-jaarplan-plan">
+                            <SelectValue placeholder="Selecteer bestaand plan..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {userPlans.map(plan => (
+                              <SelectItem key={plan} value={plan}>{plan}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Input
+                        value={formData.afspraken}
+                        onChange={e => setFormData(prev => ({ ...prev, afspraken: e.target.value }))}
+                        placeholder="Of typ een nieuw plan..."
+                        data-testid="input-jaarplan-plan"
+                      />
+                    </div>
+                  );
+                })()}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Startdatum</label>
@@ -2239,7 +2264,7 @@ function JaarplanSection({ users, currentUser }: { users?: User[]; currentUser?:
                   <table className="w-full text-sm" data-testid={`jaarplan-table-${userName}`}>
                     <thead>
                       <tr className="border-b text-xs text-muted-foreground">
-                        <th className="text-left py-2 pr-3 font-medium">Afspraken</th>
+                        <th className="text-left py-2 pr-3 font-medium">Plan</th>
                         <th className="text-left py-2 px-3 font-medium whitespace-nowrap">Start</th>
                         <th className="text-left py-2 px-3 font-medium whitespace-nowrap">Einde</th>
                         <th className="text-left py-2 px-3 font-medium">Voortgang</th>
