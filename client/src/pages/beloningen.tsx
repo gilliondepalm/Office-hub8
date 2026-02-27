@@ -1303,20 +1303,21 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
                       );
                       if (filtered.length === 0) return null;
                       return (
-                        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto" data-testid="comp-name-dropdown">
+                        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-72 overflow-y-auto" data-testid="comp-name-dropdown">
                           {filtered.map(name => {
                             const usedIn = [...new Set(allCompetencies?.filter(c => c.name === name).map(c => c.functie) || [])];
+                            const source = allCompetencies?.find(c => c.name === name);
+                            const hasNorms = source && (source.norm1 || source.norm2 || source.norm3 || source.norm4 || source.norm5);
                             return (
                               <button
                                 key={name}
                                 type="button"
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground border-b border-border/40 last:border-0"
                                 data-testid={`comp-option-${name}`}
                                 onMouseDown={(e) => {
                                   e.preventDefault();
                                   setNewCompName(name);
                                   setShowCompDropdown(false);
-                                  const source = allCompetencies?.find(c => c.name === name);
                                   if (source) {
                                     setNewCompNorms({
                                       norm1: source.norm1 || "",
@@ -1328,8 +1329,23 @@ function BeoordelingSection({ users, currentUser }: { users?: User[]; currentUse
                                   }
                                 }}
                               >
-                                <span>{name}</span>
-                                <span className="text-xs text-muted-foreground ml-2">{usedIn.join(", ")}</span>
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium">{name}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">{usedIn.join(", ")}</span>
+                                </div>
+                                {hasNorms && (
+                                  <div className="mt-1 space-y-0.5">
+                                    {[1, 2, 3, 4, 5].map(n => {
+                                      const nv = (source as any)[`norm${n}`];
+                                      return nv ? (
+                                        <div key={n} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                                          <span className="shrink-0 font-medium w-3 text-center">{n}.</span>
+                                          <span className="truncate">{nv}</span>
+                                        </div>
+                                      ) : null;
+                                    })}
+                                  </div>
+                                )}
                               </button>
                             );
                           })}
