@@ -91,6 +91,7 @@ export default function LoginPage() {
             </div>
           </div>
           <p className="text-xs text-white/50">Kantoor Dashboard v2.0</p>
+          <p className="text-xs text-white/50">GDP © ir. G.G. de Palm</p>
         </div>
       </div>
 
