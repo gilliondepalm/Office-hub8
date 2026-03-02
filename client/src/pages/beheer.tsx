@@ -11,7 +11,8 @@ import {
 import {
   Avatar, AvatarFallback,
 } from "@/components/ui/avatar";
-import { Shield, Settings, Save, Users, Camera, ImageIcon } from "lucide-react";
+import { Shield, Settings, Save, Users, Camera, ImageIcon, KeyRound } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/schema";
@@ -120,8 +121,111 @@ function PermissionsDialog({
   );
 }
 
+function ResetPasswordDialog({
+  user,
+  open,
+  onOpenChange,
+}: {
+  user: SafeUser;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async (password: string) => {
+      await apiRequest("PATCH", `/api/users/${user.id}`, { password });
+    },
+    onSuccess: () => {
+      toast({ title: "Wachtwoord gereset" });
+      setNewPassword("");
+      setConfirmPassword("");
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast({ title: "Fout bij resetten", variant: "destructive" });
+    },
+  });
+
+  const handleSave = () => {
+    if (!newPassword.trim()) {
+      toast({ title: "Vul een nieuw wachtwoord in", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length < 4) {
+      toast({ title: "Wachtwoord moet minimaal 4 tekens zijn", variant: "destructive" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Wachtwoorden komen niet overeen", variant: "destructive" });
+      return;
+    }
+    mutation.mutate(newPassword);
+  };
+
+  const initials = user.fullName
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "??";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Wachtwoord Resetten</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-3 mb-4">
+          <Avatar className="h-10 w-10">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm">{initials}</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-medium text-sm" data-testid="text-reset-user">{user.fullName}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Nieuw wachtwoord</label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Nieuw wachtwoord"
+              data-testid="input-new-password"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Bevestig wachtwoord</label>
+            <Input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="Herhaal wachtwoord"
+              data-testid="input-confirm-password"
+            />
+          </div>
+        </div>
+        <Button
+          className="w-full mt-4"
+          onClick={handleSave}
+          disabled={mutation.isPending}
+          data-testid="button-save-password"
+        >
+          <KeyRound className="h-4 w-4 mr-2" />
+          {mutation.isPending ? "Opslaan..." : "Wachtwoord Resetten"}
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function BeheerPage() {
   const [editUser, setEditUser] = useState<SafeUser | null>(null);
+  const [resetUser, setResetUser] = useState<SafeUser | null>(null);
   const loginPhotoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -206,6 +310,14 @@ export default function BeheerPage() {
         />
       )}
 
+      {resetUser && (
+        <ResetPasswordDialog
+          user={resetUser}
+          open={!!resetUser}
+          onOpenChange={(open) => { if (!open) setResetUser(null); }}
+        />
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 pb-3">
           <Users className="h-4 w-4 text-muted-foreground" />
@@ -254,6 +366,15 @@ export default function BeheerPage() {
                         <Badge variant="outline" className="text-xs">+{(u.permissions?.length || 0) - 4}</Badge>
                       )}
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setResetUser(u)}
+                      data-testid={`button-reset-pw-${u.id}`}
+                    >
+                      <KeyRound className="h-4 w-4 mr-1" />
+                      Wachtwoord
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
