@@ -3,7 +3,7 @@ import { eq, desc, sql, and } from "drizzle-orm";
 import {
   users, events, announcements, departments, absences, rewards, applications, appAccess, messages,
   aoProcedures, aoInstructions, positionHistory, personalDevelopment, legislationLinks, caoDocuments, siteSettings,
-  functioneringReviews, competencies, beoordelingReviews, beoordelingScores, jaarplanItems,
+  functioneringReviews, competencies, beoordelingReviews, beoordelingScores, jaarplanItems, yearlyAwards,
   type User, type InsertUser,
   type Event, type InsertEvent,
   type Announcement, type InsertAnnouncement,
@@ -25,6 +25,7 @@ import {
   type BeoordelingScore, type InsertBeoordelingScore,
   type JaarplanItem, type InsertJaarplanItem,
   type HelpContent, type InsertHelpContent,
+  type YearlyAward, type InsertYearlyAward,
   helpContentTable,
 } from "@shared/schema";
 
@@ -153,6 +154,11 @@ export interface IStorage {
 
   getAllHelpContent(): Promise<HelpContent[]>;
   upsertHelpContent(data: InsertHelpContent): Promise<HelpContent>;
+
+  getYearlyAwards(): Promise<YearlyAward[]>;
+  createYearlyAward(award: InsertYearlyAward): Promise<YearlyAward>;
+  updateYearlyAward(id: string, data: Partial<InsertYearlyAward>): Promise<YearlyAward>;
+  deleteYearlyAward(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -929,6 +935,24 @@ export class DatabaseStorage implements IStorage {
     }
     const [created] = await db.insert(helpContentTable).values(data).returning();
     return created;
+  }
+
+  async getYearlyAwards(): Promise<YearlyAward[]> {
+    return db.select().from(yearlyAwards).orderBy(desc(yearlyAwards.year));
+  }
+
+  async createYearlyAward(award: InsertYearlyAward): Promise<YearlyAward> {
+    const [created] = await db.insert(yearlyAwards).values(award).returning();
+    return created;
+  }
+
+  async updateYearlyAward(id: string, data: Partial<InsertYearlyAward>): Promise<YearlyAward> {
+    const [updated] = await db.update(yearlyAwards).set(data).where(eq(yearlyAwards.id, id)).returning();
+    return updated;
+  }
+
+  async deleteYearlyAward(id: string): Promise<void> {
+    await db.delete(yearlyAwards).where(eq(yearlyAwards.id, id));
   }
 }
 

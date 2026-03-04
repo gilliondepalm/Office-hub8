@@ -1566,5 +1566,64 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/yearly-awards", requireAuth, async (_req, res) => {
+    const awards = await storage.getYearlyAwards();
+    res.json(awards);
+  });
+
+  app.post("/api/yearly-awards", requireAuth, async (req, res) => {
+    if (!isAdminRole((req as any).user.role)) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      const year = Number(req.body.year);
+      if (!year || isNaN(year)) {
+        return res.status(400).json({ message: "Jaar is verplicht en moet een geldig getal zijn" });
+      }
+      const award = await storage.createYearlyAward({
+        year,
+        departmentOfYear: req.body.departmentOfYear || null,
+        managerOfYear: req.body.managerOfYear || null,
+      });
+      res.json(award);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Fout bij opslaan" });
+    }
+  });
+
+  app.patch("/api/yearly-awards/:id", requireAuth, async (req, res) => {
+    if (!isAdminRole((req as any).user.role)) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      const updateData: Record<string, any> = {};
+      if (req.body.year !== undefined) {
+        const year = Number(req.body.year);
+        if (!year || isNaN(year)) {
+          return res.status(400).json({ message: "Jaar moet een geldig getal zijn" });
+        }
+        updateData.year = year;
+      }
+      if (req.body.departmentOfYear !== undefined) updateData.departmentOfYear = req.body.departmentOfYear || null;
+      if (req.body.managerOfYear !== undefined) updateData.managerOfYear = req.body.managerOfYear || null;
+      const award = await storage.updateYearlyAward(req.params.id, updateData);
+      res.json(award);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Fout bij bijwerken" });
+    }
+  });
+
+  app.delete("/api/yearly-awards/:id", requireAuth, async (req, res) => {
+    if (!isAdminRole((req as any).user.role)) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      await storage.deleteYearlyAward(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Fout bij verwijderen" });
+    }
+  });
+
   return httpServer;
 }
