@@ -330,6 +330,18 @@ export const insertHelpContentSchema = createInsertSchema(helpContentTable).omit
 export type InsertHelpContent = z.infer<typeof insertHelpContentSchema>;
 export type HelpContent = typeof helpContentTable.$inferSelect;
 
+export const officialHolidays = pgTable("official_holidays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  date: date("date").notNull(),
+  year: integer("year").notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+});
+
+export const insertOfficialHolidaySchema = createInsertSchema(officialHolidays).omit({ id: true });
+export type InsertOfficialHoliday = z.infer<typeof insertOfficialHolidaySchema>;
+export type OfficialHoliday = typeof officialHolidays.$inferSelect;
+
 export function isAdminRole(role?: string | null): boolean {
   return role === "admin" || role === "directeur";
 }

@@ -19,8 +19,11 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
   Plus, ChevronLeft, ChevronRight, CalendarDays, MapPin, Clock,
-  Trash2, Pencil, Cake, Award, Flag,
+  Trash2, Pencil, Cake, Award, Flag, Upload, X,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +32,7 @@ import {
   addMonths, subMonths, eachDayOfInterval, isSameMonth, isToday,
 } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Event, User } from "@shared/schema";
+import type { Event, User, OfficialHoliday } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@shared/schema";
 
@@ -398,12 +401,261 @@ function DayDetail({
   );
 }
 
+function HolidayUploadDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const [holidays, setHolidays] = useState<{ name: string; date: string }[]>([]);
+  const [newName, setNewName] = useState("");
+  const [newDate, setNewDate] = useState("");
+
+  const { data: existingHolidays, isLoading } = useQuery<OfficialHoliday[]>({
+    queryKey: ["/api/official-holidays", selectedYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/official-holidays?year=${selectedYear}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Fout bij ophalen");
+      return res.json();
+    },
+  });
+
+  const hasUnsaved = holidays.length > 0;
+
+  const uploadMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/official-holidays", {
+        year: parseInt(selectedYear),
+        holidays,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/official-holidays"] });
+      toast({ title: "Vakantiedagen opgeslagen", description: `${holidays.length} dagen voor ${selectedYear}` });
+      setHolidays([]);
+    },
+    onError: (err: any) => {
+      toast({ title: "Fout", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/official-holidays/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/official-holidays"] });
+      toast({ title: "Vakantiedag verwijderd" });
+    },
+  });
+
+  const addRow = () => {
+    if (!newName.trim() || !newDate) return;
+    setHolidays(prev => [...prev, { name: newName.trim(), date: newDate }]);
+    setNewName("");
+    setNewDate("");
+  };
+
+  const removeRow = (idx: number) => {
+    setHolidays(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const parsed: { name: string; date: string }[] = [];
+      for (const line of lines) {
+        const sep = line.includes(";") ? ";" : ",";
+        const parts = line.split(sep).map(p => p.trim().replace(/^"|"$/g, ""));
+        if (parts.length >= 2) {
+          const [dateStr, name] = parts[0].match(/^\d/) ? [parts[0], parts[1]] : [parts[1], parts[0]];
+          const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/) ||
+            dateStr.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+          if (dateMatch && name) {
+            let isoDate: string;
+            if (dateStr.match(/^\d{4}/)) {
+              isoDate = dateStr;
+            } else {
+              isoDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+            }
+            parsed.push({ name, date: isoDate });
+          }
+        }
+      }
+      if (parsed.length === 0) {
+        toast({ title: "Geen geldige data gevonden", description: "Verwacht CSV-formaat: datum,naam (bijv. 2026-01-01,Nieuwjaarsdag)", variant: "destructive" });
+      } else {
+        setHolidays(parsed);
+        toast({ title: `${parsed.length} dagen ingelezen uit bestand` });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear + i);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Officiële Vakantiedagen Beheren
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-center gap-3">
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Jaar</label>
+            <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); setHolidays([]); }}>
+              <SelectTrigger className="w-32" data-testid="select-holiday-year">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map(y => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 flex-1">
+            <label className="text-sm font-medium">CSV Importeren</label>
+            <Input
+              type="file"
+              accept=".csv,.txt"
+              onChange={handleFileUpload}
+              className="cursor-pointer"
+              data-testid="input-holiday-file"
+            />
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">CSV-formaat: datum,naam — bijv. <code>2026-01-01,Nieuwjaarsdag</code> of <code>01-01-2026,Nieuwjaarsdag</code></p>
+
+        {(existingHolidays && existingHolidays.length > 0 && !hasUnsaved) && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Huidige vakantiedagen ({selectedYear})</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Datum</TableHead>
+                  <TableHead>Naam</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {existingHolidays.map(h => (
+                  <TableRow key={h.id} data-testid={`row-holiday-${h.id}`}>
+                    <TableCell className="text-sm">
+                      {format(new Date(h.date + "T00:00:00"), "d MMMM yyyy", { locale: nl })}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">{h.name}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => deleteMutation.mutate(h.id)}
+                        data-testid={`button-delete-holiday-${h.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {hasUnsaved && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Nieuwe vakantiedagen ({holidays.length})</h3>
+            <p className="text-xs text-muted-foreground">Opslaan vervangt alle bestaande dagen voor {selectedYear}.</p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Datum</TableHead>
+                  <TableHead>Naam</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {holidays.sort((a, b) => a.date.localeCompare(b.date)).map((h, idx) => (
+                  <TableRow key={idx} data-testid={`row-new-holiday-${idx}`}>
+                    <TableCell className="text-sm">
+                      {format(new Date(h.date + "T00:00:00"), "d MMMM yyyy", { locale: nl })}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">{h.name}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeRow(idx)}>
+                        <X className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        <div className="flex gap-2 items-end border-t pt-3">
+          <div className="space-y-1 flex-1">
+            <label className="text-xs font-medium">Naam</label>
+            <Input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="bijv. Koningsdag"
+              data-testid="input-holiday-name"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Datum</label>
+            <Input
+              type="date"
+              value={newDate}
+              onChange={e => setNewDate(e.target.value)}
+              data-testid="input-holiday-date"
+            />
+          </div>
+          <Button variant="outline" onClick={addRow} disabled={!newName.trim() || !newDate} data-testid="button-add-holiday-row">
+            <Plus className="h-4 w-4 mr-1" />
+            Toevoegen
+          </Button>
+        </div>
+
+        {hasUnsaved && (
+          <div className="flex justify-end gap-2 border-t pt-3">
+            <Button variant="outline" onClick={() => setHolidays([])} data-testid="button-cancel-holidays">
+              Annuleren
+            </Button>
+            <Button onClick={() => uploadMutation.mutate()} disabled={uploadMutation.isPending} data-testid="button-save-holidays">
+              <Upload className="h-4 w-4 mr-2" />
+              {uploadMutation.isPending ? "Opslaan..." : `${holidays.length} dagen opslaan`}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function KalenderPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [createOpen, setCreateOpen] = useState(false);
   const [createDate, setCreateDate] = useState<string>("");
   const [editEvent, setEditEvent] = useState<Event | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [holidayUploadOpen, setHolidayUploadOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -413,6 +665,10 @@ export default function KalenderPage() {
 
   const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
+  });
+
+  const { data: officialHolidayData } = useQuery<OfficialHoliday[]>({
+    queryKey: ["/api/official-holidays"],
   });
 
   const deleteMutation = useMutation({
@@ -463,12 +719,29 @@ export default function KalenderPage() {
       entries.push(...getAnniversariesForMonth(users, nextMonth));
     }
 
-    entries.push(...getDutchHolidays(year));
-    if (currentMonth.getMonth() === 0) entries.push(...getDutchHolidays(year - 1));
-    if (currentMonth.getMonth() === 11) entries.push(...getDutchHolidays(year + 1));
+    const addHolidaysForYear = (y: number) => {
+      const uploaded = officialHolidayData?.filter(h => h.year === y);
+      if (uploaded && uploaded.length > 0) {
+        for (const h of uploaded) {
+          entries.push({
+            id: `feestdag-uploaded-${h.id}`,
+            title: h.name,
+            date: h.date,
+            type: "feestdag",
+            description: "Officiële vakantiedag",
+          });
+        }
+      } else {
+        entries.push(...getDutchHolidays(y));
+      }
+    };
+
+    addHolidaysForYear(year);
+    if (currentMonth.getMonth() === 0) addHolidaysForYear(year - 1);
+    if (currentMonth.getMonth() === 11) addHolidaysForYear(year + 1);
 
     return entries;
-  }, [events, users, currentMonth]);
+  }, [events, users, currentMonth, officialHolidayData]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -507,12 +780,20 @@ export default function KalenderPage() {
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-kalender-title">Evenementen Kalender</h1>
         </div>
-        {(isAdminRole(user?.role) || user?.role === "manager") && (
-          <Button onClick={() => { setCreateDate(""); setCreateOpen(true); }} data-testid="button-add-event">
-            <Plus className="h-4 w-4 mr-2" />
-            Nieuw Evenement
-          </Button>
-        )}
+        <div className="flex gap-2 flex-wrap">
+          {isAdminRole(user?.role) && (
+            <Button variant="outline" onClick={() => setHolidayUploadOpen(true)} data-testid="button-upload-holidays">
+              <Upload className="h-4 w-4 mr-2" />
+              Vakantiedagen
+            </Button>
+          )}
+          {(isAdminRole(user?.role) || user?.role === "manager") && (
+            <Button onClick={() => { setCreateDate(""); setCreateOpen(true); }} data-testid="button-add-event">
+              <Plus className="h-4 w-4 mr-2" />
+              Nieuw Evenement
+            </Button>
+          )}
+        </div>
       </div>
 
       <EventFormDialog
@@ -527,6 +808,10 @@ export default function KalenderPage() {
           editEvent={editEvent}
         />
       )}
+      <HolidayUploadDialog
+        open={holidayUploadOpen}
+        onOpenChange={setHolidayUploadOpen}
+      />
       {selectedDay && (
         <DayDetail
           date={selectedDay}

@@ -25,7 +25,8 @@ import {
   type BeoordelingScore, type InsertBeoordelingScore,
   type JaarplanItem, type InsertJaarplanItem,
   type HelpContent, type InsertHelpContent,
-  helpContentTable,
+  type OfficialHoliday, type InsertOfficialHoliday,
+  helpContentTable, officialHolidays,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -153,6 +154,11 @@ export interface IStorage {
 
   getAllHelpContent(): Promise<HelpContent[]>;
   upsertHelpContent(data: InsertHelpContent): Promise<HelpContent>;
+
+  getOfficialHolidays(year?: number): Promise<OfficialHoliday[]>;
+  createOfficialHoliday(holiday: InsertOfficialHoliday): Promise<OfficialHoliday>;
+  deleteOfficialHoliday(id: string): Promise<void>;
+  deleteOfficialHolidaysByYear(year: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -929,6 +935,26 @@ export class DatabaseStorage implements IStorage {
     }
     const [created] = await db.insert(helpContentTable).values(data).returning();
     return created;
+  }
+
+  async getOfficialHolidays(year?: number): Promise<OfficialHoliday[]> {
+    if (year) {
+      return db.select().from(officialHolidays).where(eq(officialHolidays.year, year)).orderBy(officialHolidays.date);
+    }
+    return db.select().from(officialHolidays).orderBy(officialHolidays.date);
+  }
+
+  async createOfficialHoliday(holiday: InsertOfficialHoliday): Promise<OfficialHoliday> {
+    const [created] = await db.insert(officialHolidays).values(holiday).returning();
+    return created;
+  }
+
+  async deleteOfficialHoliday(id: string): Promise<void> {
+    await db.delete(officialHolidays).where(eq(officialHolidays.id, id));
+  }
+
+  async deleteOfficialHolidaysByYear(year: number): Promise<void> {
+    await db.delete(officialHolidays).where(eq(officialHolidays.year, year));
   }
 }
 

@@ -616,6 +616,54 @@ export async function registerRoutes(
     res.json({ message: "Verwijderd" });
   });
 
+  app.get("/api/official-holidays", requireAuth, async (req, res) => {
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    const holidays = await storage.getOfficialHolidays(year);
+    res.json(holidays);
+  });
+
+  app.post("/api/official-holidays", requireAuth, async (req, res) => {
+    const user = req.user as any;
+    if (!isAdminRole(user?.role)) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    try {
+      const holidays = req.body.holidays;
+      const year = req.body.year;
+      if (!Array.isArray(holidays) || typeof year !== "number" || holidays.length === 0) {
+        return res.status(400).json({ message: "Ongeldige data: verwacht jaar (number) en holidays (array)" });
+      }
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const validated = holidays.map((h: any, i: number) => {
+        if (!h.name || typeof h.name !== "string" || !h.name.trim()) {
+          throw new Error(`Rij ${i + 1}: naam is verplicht`);
+        }
+        if (!h.date || !dateRegex.test(h.date)) {
+          throw new Error(`Rij ${i + 1}: ongeldige datum (verwacht JJJJ-MM-DD)`);
+        }
+        return { name: h.name.trim(), date: h.date, year, createdBy: user.id };
+      });
+      await storage.deleteOfficialHolidaysByYear(year);
+      const created = [];
+      for (const v of validated) {
+        const holiday = await storage.createOfficialHoliday(v);
+        created.push(holiday);
+      }
+      res.json(created);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || "Upload mislukt" });
+    }
+  });
+
+  app.delete("/api/official-holidays/:id", requireAuth, async (req, res) => {
+    const user = req.user as any;
+    if (!isAdminRole(user?.role)) {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+    await storage.deleteOfficialHoliday(req.params.id);
+    res.json({ message: "Verwijderd" });
+  });
+
   app.get("/api/announcements", requireAuth, async (_req, res) => {
     const all = await storage.getAnnouncements();
     res.json(all);
