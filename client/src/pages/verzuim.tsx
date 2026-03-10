@@ -21,12 +21,12 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Clock, CheckCircle, XCircle, AlertCircle, Palmtree, CalendarDays, Pencil, ClipboardList, Eye } from "lucide-react";
+import { Plus, Clock, CheckCircle, XCircle, AlertCircle, Palmtree, CalendarDays, Pencil, ClipboardList, Eye, FileBarChart, Filter } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Absence } from "@shared/schema";
+import type { Absence, User } from "@shared/schema";
 import { isAdminRole } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 
@@ -68,16 +68,228 @@ type VacationBalance = {
   remainingDays: number;
 };
 
+function AbsenceReportDialog({
+  open,
+  onOpenChange,
+  absences,
+  users,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  absences: (Absence & { userName?: string; userDepartment?: string })[];
+  users: User[];
+}) {
+  const today = new Date();
+  const firstOfMonth = format(new Date(today.getFullYear(), today.getMonth(), 1), "yyyy-MM-dd");
+  const lastOfMonth = format(new Date(today.getFullYear(), today.getMonth() + 1, 0), "yyyy-MM-dd");
+
+  const [filterDept, setFilterDept] = useState<string>("all");
+  const [filterStart, setFilterStart] = useState(firstOfMonth);
+  const [filterEnd, setFilterEnd] = useState(lastOfMonth);
+
+  const typeLabels: Record<string, string> = {
+    sick: "Ziekte",
+    vacation: "Vakantie",
+    personal: "Persoonlijk",
+    other: "Overig",
+    bvvd: "BVVD",
+  };
+
+  const statusLabels: Record<string, string> = {
+    pending: "In afwachting",
+    approved: "Goedgekeurd",
+    rejected: "Afgewezen",
+  };
+
+  const departments = Array.from(new Set([
+    ...users.filter(u => u.active && u.department).map(u => u.department!),
+    ...absences.map(a => (a as any).userDepartment).filter(Boolean),
+  ])).sort((a, b) => a.localeCompare(b, "nl"));
+
+  const validRange = !filterStart || !filterEnd || filterStart <= filterEnd;
+
+  const filtered = !validRange ? [] : absences.filter(a => {
+    if (filterDept !== "all" && (a as any).userDepartment !== filterDept) return false;
+    if (filterStart && a.endDate < filterStart) return false;
+    if (filterEnd && a.startDate > filterEnd) return false;
+    return true;
+  });
+
+  const grouped: Record<string, typeof filtered> = {};
+  for (const a of filtered) {
+    const dept = (a as any).userDepartment || "Geen afdeling";
+    if (!grouped[dept]) grouped[dept] = [];
+    grouped[dept].push(a);
+  }
+
+  const sortedDepts = Object.keys(grouped).sort((a, b) => a.localeCompare(b, "nl"));
+
+  const countBusinessDays = (start: string, end: string, halfDay?: string | null) => {
+    let count = 0;
+    const s = new Date(start + "T00:00:00");
+    const e = new Date(end + "T00:00:00");
+    const cur = new Date(s);
+    while (cur <= e) {
+      const day = cur.getDay();
+      if (day !== 0 && day !== 6) count++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    if ((halfDay === "am" || halfDay === "pm") && count > 0) {
+      return 0.5;
+    }
+    return count;
+  };
+
+  const totalDays = filtered.reduce((sum, a) => sum + countBusinessDays(a.startDate, a.endDate, a.halfDay), 0);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileBarChart className="h-5 w-5" />
+            Afwezigheidsrapport
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className="text-sm font-medium flex items-center gap-1">
+              <Filter className="h-3.5 w-3.5" />
+              Afdeling
+            </label>
+            <Select value={filterDept} onValueChange={setFilterDept}>
+              <SelectTrigger data-testid="select-report-department">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle afdelingen</SelectItem>
+                {departments.map(d => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Van</label>
+            <Input
+              type="date"
+              value={filterStart}
+              onChange={e => setFilterStart(e.target.value)}
+              className="cursor-pointer"
+              data-testid="input-report-start"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Tot</label>
+            <Input
+              type="date"
+              value={filterEnd}
+              onChange={e => setFilterEnd(e.target.value)}
+              className="cursor-pointer"
+              data-testid="input-report-end"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-sm text-muted-foreground border-b pb-2">
+          {!validRange ? (
+            <span className="text-destructive">Ongeldige periode: startdatum moet voor einddatum liggen</span>
+          ) : (
+            <>
+              <span>Resultaten: <strong className="text-foreground">{filtered.length}</strong> meldingen</span>
+              <span>Totaal: <strong className="text-foreground">{totalDays}</strong> werkdagen</span>
+            </>
+          )}
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center py-8">
+            <FileBarChart className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground text-sm">Geen afwezigheden gevonden in deze periode</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Medewerker</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Periode</TableHead>
+                  <TableHead className="text-right">Dagen</TableHead>
+                  <TableHead>Reden</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedDepts.map(dept => (
+                  <>
+                    <TableRow key={`dept-${dept}`}>
+                      <TableCell colSpan={6} className="bg-muted/50 font-bold text-sm py-1.5">
+                        {dept} ({grouped[dept].length} meldingen)
+                      </TableCell>
+                    </TableRow>
+                    {[...grouped[dept]]
+                      .sort((a, b) => ((a as any).userName || "").localeCompare((b as any).userName || "", "nl") || a.startDate.localeCompare(b.startDate))
+                      .map(absence => {
+                        const days = countBusinessDays(absence.startDate, absence.endDate, absence.halfDay);
+                        const displayReason = absence.type === "bvvd" && absence.bvvdReason
+                          ? absence.bvvdReason + (absence.reason ? ` - ${absence.reason}` : "")
+                          : absence.reason || "-";
+                        return (
+                          <TableRow key={absence.id} data-testid={`row-report-${absence.id}`}>
+                            <TableCell className="font-medium text-sm pl-6">
+                              {(absence as any).userName || "Medewerker"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">{typeLabels[absence.type]}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                              {format(new Date(absence.startDate + "T00:00:00"), "d MMM", { locale: nl })} - {format(new Date(absence.endDate + "T00:00:00"), "d MMM yyyy", { locale: nl })}
+                              {absence.halfDay === "am" && <Badge variant="outline" className="ml-1 text-xs">Ochtend</Badge>}
+                              {absence.halfDay === "pm" && <Badge variant="outline" className="ml-1 text-xs">Middag</Badge>}
+                            </TableCell>
+                            <TableCell className="text-right text-sm">{days}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-40 truncate">
+                              {displayReason}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={absence.status === "approved" ? "default" : absence.status === "rejected" ? "destructive" : "outline"}
+                                className="text-xs"
+                              >
+                                {statusLabels[absence.status] || absence.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function VerzuimPage() {
   const [open, setOpen] = useState(false);
   const [vacDaysOpen, setVacDaysOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<{ id: string; name: string; days: number } | null>(null);
   const [newDays, setNewDays] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const { data: absences, isLoading } = useQuery<(Absence & { userName?: string })[]>({
+  const { data: absences, isLoading } = useQuery<(Absence & { userName?: string; userDepartment?: string })[]>({
     queryKey: ["/api/absences"],
+  });
+
+  const { data: allUsers } = useQuery<User[]>({
+    queryKey: ["/api/users"],
   });
 
   const { data: vacationBalances, isLoading: loadingBalances } = useQuery<VacationBalance[]>({
@@ -186,6 +398,12 @@ export default function VerzuimPage() {
           <p className="text-muted-foreground text-sm">Beheer verlof- en ziekmeldingen</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {isAdminOrManager && (
+            <Button variant="outline" onClick={() => setReportOpen(true)} data-testid="button-absence-report">
+              <FileBarChart className="h-4 w-4 mr-2" />
+              Afwezigheidsrapport
+            </Button>
+          )}
           {isAdmin && (
             <Dialog open={vacDaysOpen} onOpenChange={setVacDaysOpen}>
               <DialogTrigger asChild>
@@ -614,6 +832,13 @@ export default function VerzuimPage() {
           })()}
         </div>
       )}
+
+      <AbsenceReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        absences={absences || []}
+        users={allUsers || []}
+      />
 
       {activeTab === "vakantiesaldo" && isAdminOrManager && (
         <Card>
