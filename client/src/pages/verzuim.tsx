@@ -84,6 +84,7 @@ function AbsenceReportDialog({
   const lastOfMonth = format(new Date(today.getFullYear(), today.getMonth() + 1, 0), "yyyy-MM-dd");
 
   const [filterDept, setFilterDept] = useState<string>("all");
+  const [filterEmployee, setFilterEmployee] = useState<string>("all");
   const [filterStart, setFilterStart] = useState(firstOfMonth);
   const [filterEnd, setFilterEnd] = useState(lastOfMonth);
 
@@ -106,10 +107,20 @@ function AbsenceReportDialog({
     ...absences.map(a => (a as any).userDepartment).filter(Boolean),
   ])).sort((a, b) => a.localeCompare(b, "nl"));
 
+  const employeeOptions = users
+    .filter(u => u.active && (filterDept === "all" || u.department === filterDept))
+    .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || "", "nl"));
+
+  const handleDeptChange = (val: string) => {
+    setFilterDept(val);
+    setFilterEmployee("all");
+  };
+
   const validRange = !filterStart || !filterEnd || filterStart <= filterEnd;
 
   const filtered = !validRange ? [] : absences.filter(a => {
     if (filterDept !== "all" && (a as any).userDepartment !== filterDept) return false;
+    if (filterEmployee !== "all" && String(a.userId) !== filterEmployee) return false;
     if (filterStart && a.endDate < filterStart) return false;
     if (filterEnd && a.startDate > filterEnd) return false;
     return true;
@@ -149,16 +160,20 @@ function AbsenceReportDialog({
           <DialogTitle className="flex items-center gap-2">
             <FileBarChart className="h-5 w-5" />
             Afwezigheidsrapport
+            {filterEmployee !== "all" && (() => {
+              const emp = users.find(u => String(u.id) === filterEmployee);
+              return emp ? <span className="font-normal text-muted-foreground">— {emp.fullName || emp.username}</span> : null;
+            })()}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-1">
             <label className="text-sm font-medium flex items-center gap-1">
               <Filter className="h-3.5 w-3.5" />
               Afdeling
             </label>
-            <Select value={filterDept} onValueChange={setFilterDept}>
+            <Select value={filterDept} onValueChange={handleDeptChange}>
               <SelectTrigger data-testid="select-report-department">
                 <SelectValue />
               </SelectTrigger>
@@ -166,6 +181,20 @@ function AbsenceReportDialog({
                 <SelectItem value="all">Alle afdelingen</SelectItem>
                 {departments.map(d => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Medewerker</label>
+            <Select value={filterEmployee} onValueChange={setFilterEmployee}>
+              <SelectTrigger data-testid="select-report-employee">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle medewerkers</SelectItem>
+                {employeeOptions.map(u => (
+                  <SelectItem key={u.id} value={String(u.id)}>{u.fullName || u.username}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
