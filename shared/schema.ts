@@ -36,6 +36,7 @@ export const events = pgTable("events", {
   location: text("location"),
   category: text("category"),
   createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const announcements = pgTable("announcements", {
@@ -238,7 +239,7 @@ export const siteSettings = pgTable("site_settings", {
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
-export const insertEventSchema = createInsertSchema(events).omit({ id: true });
+export const insertEventSchema = createInsertSchema(events).omit({ id: true, createdAt: true });
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, createdAt: true });
 export const insertDepartmentSchema = createInsertSchema(departments).omit({ id: true });
 export const insertAbsenceSchema = createInsertSchema(absences).omit({ id: true });

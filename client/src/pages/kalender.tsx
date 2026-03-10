@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,6 +35,71 @@ import { nl } from "date-fns/locale";
 import type { Event, User, OfficialHoliday, Snipperdag } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@shared/schema";
+
+function getKalenderLastSeenKey(userId: string) {
+  return `kalender_last_seen_${userId}`;
+}
+
+function getKalenderLastSeen(userId: string): number {
+  const val = localStorage.getItem(getKalenderLastSeenKey(userId));
+  return val ? parseInt(val, 10) : 0;
+}
+
+const KALENDER_SEEN_EVENT = "kalender-seen";
+
+function setKalenderLastSeen(userId: string) {
+  localStorage.setItem(getKalenderLastSeenKey(userId), Date.now().toString());
+  window.dispatchEvent(new CustomEvent(KALENDER_SEEN_EVENT));
+}
+
+export function useKalenderNotifications() {
+  const { user } = useAuth();
+  const userId = user?.id || "";
+  const [lastSeen, setLastSeenState] = useState(() => getKalenderLastSeen(userId));
+
+  useEffect(() => {
+    setLastSeenState(getKalenderLastSeen(userId));
+  }, [userId]);
+
+  useEffect(() => {
+    const handler = () => setLastSeenState(getKalenderLastSeen(userId));
+    window.addEventListener(KALENDER_SEEN_EVENT, handler);
+    return () => window.removeEventListener(KALENDER_SEEN_EVENT, handler);
+  }, [userId]);
+
+  const { data: events } = useQuery<Event[]>({
+    queryKey: ["/api/events"],
+  });
+
+  const { data: snipperdagenData } = useQuery<Snipperdag[]>({
+    queryKey: ["/api/snipperdagen"],
+  });
+
+  const now = new Date();
+  const currentMonthStart = format(startOfMonth(now), "yyyy-MM-dd");
+  const currentMonthEnd = format(endOfMonth(now), "yyyy-MM-dd");
+
+  const newEventsCount = (events || []).filter(e => {
+    if (e.date < currentMonthStart || e.date > currentMonthEnd) return false;
+    if (!e.createdAt) return false;
+    return new Date(e.createdAt).getTime() > lastSeen;
+  }).length;
+
+  const newSnipperdagenCount = (snipperdagenData || []).filter(s => {
+    if (s.date < currentMonthStart || s.date > currentMonthEnd) return false;
+    return new Date(s.createdAt).getTime() > lastSeen;
+  }).length;
+
+  const totalNew = newEventsCount + newSnipperdagenCount;
+
+  const markSeen = useCallback(() => {
+    if (userId) {
+      setKalenderLastSeen(userId);
+    }
+  }, [userId]);
+
+  return { totalNew, markSeen };
+}
 
 const eventFormSchema = z.object({
   title: z.string().min(1, "Titel is verplicht"),
@@ -663,6 +728,11 @@ export default function KalenderPage() {
   const [holidayUploadOpen, setHolidayUploadOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { markSeen } = useKalenderNotifications();
+
+  useEffect(() => {
+    markSeen();
+  }, [markSeen]);
 
   const { data: events, isLoading: loadingEvents } = useQuery<Event[]>({
     queryKey: ["/api/events"],

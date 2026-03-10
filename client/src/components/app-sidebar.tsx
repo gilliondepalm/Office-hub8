@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@shared/schema";
 import { useAankondigingenNotifications } from "@/pages/aankondigingen";
+import { useKalenderNotifications } from "@/pages/kalender";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, key: "dashboard" },
@@ -48,6 +49,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
 
   const { totalNew } = useAankondigingenNotifications();
+  const { totalNew: kalenderNew } = useKalenderNotifications();
 
   const userPermissions = user?.permissions || [];
   const visibleItems = menuItems.filter((item) => userPermissions.includes(item.key));
@@ -83,16 +85,20 @@ export function AppSidebar() {
             <SidebarMenu>
               {visibleItems.map((item) => {
                 const isActive = location === item.url || (item.url !== "/" && location.startsWith(item.url));
-                const showNotification = item.key === "aankondigingen" && totalNew > 0;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive}>
                       <Link href={item.url} data-testid={`nav-${item.url.replace("/", "") || "dashboard"}`}>
                         <item.icon className="h-4 w-4" />
                         <span className="flex-1">{item.title}</span>
-                        {showNotification && (
+                        {item.key === "aankondigingen" && totalNew > 0 && (
                           <Badge className="h-5 min-w-5 px-1.5 text-[10px] font-bold bg-destructive text-destructive-foreground hover:bg-destructive" data-testid="badge-aankondigingen-new">
                             {totalNew}
+                          </Badge>
+                        )}
+                        {item.key === "kalender" && kalenderNew > 0 && (
+                          <Badge className="h-5 min-w-5 px-1.5 text-[10px] font-bold bg-destructive text-destructive-foreground hover:bg-destructive" data-testid="badge-kalender-new">
+                            {kalenderNew}
                           </Badge>
                         )}
                       </Link>

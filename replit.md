@@ -12,7 +12,7 @@ A comprehensive office dashboard application with 9 modules and granular permiss
 
 ## Modules
 1. **Dashboard** - Overview with stats, upcoming events, recent announcements, pending absences
-2. **Evenementen Kalender** - Event management with categories (vergadering, training, sociaal, deadline), official holiday upload (CSV or manual entry, per year, admin-only)
+2. **Evenementen Kalender** - Event management with categories (vergadering, training, sociaal, deadline), official holiday upload (CSV or manual entry, per year, admin-only), sidebar notification badge for new current-month events/snipperdagen
 3. **Aankondigingen** - Announcements with priority levels, pinning, PDF attachments, and direct messaging (admin/manager to employee with reply)
 4. **Organisatie** - Department management with tabs: Afdelingen (department cards with manager info), AO-Procedures (admin-managed procedures with step-by-step instructions per department), Organogram (visual org chart), CAO Info (collective labor agreement overview), Wetgeving (legislation links grouped by category)
 5. **Personalia** - Employee directory with roles and departments
