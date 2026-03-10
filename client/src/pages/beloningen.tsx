@@ -19,12 +19,12 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Award, Star, TrendingUp, ClipboardCheck, UserCheck, Gift, Printer, Save, ChevronLeft, ChevronRight, Eye, FileText, Trash2, Settings, PlusCircle, X, Pencil, Trophy, Building2, UserCog } from "lucide-react";
+import { Plus, Award, Star, TrendingUp, ClipboardCheck, UserCheck, Gift, Printer, Save, ChevronLeft, ChevronRight, Eye, FileText, Trash2, Settings, PlusCircle, X, Pencil } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { Reward, User, FunctioneringReview, Competency, BeoordelingReview, BeoordelingScore, JaarplanItem, YearlyAward } from "@shared/schema";
+import type { Reward, User, FunctioneringReview, Competency, BeoordelingReview, BeoordelingScore, JaarplanItem } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@shared/schema";
 
@@ -2362,241 +2362,6 @@ function JaarplanSection({ users, currentUser }: { users?: User[]; currentUser?:
   );
 }
 
-function YearlyAwardsSection({ isAdmin }: { isAdmin: boolean }) {
-  const { toast } = useToast();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState({ year: new Date().getFullYear(), departmentOfYear: "", managerOfYear: "" });
-
-  const { data: awards, isLoading } = useQuery<YearlyAward[]>({
-    queryKey: ["/api/yearly-awards"],
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: { year: number; departmentOfYear: string; managerOfYear: string }) => {
-      await apiRequest("POST", "/api/yearly-awards", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/yearly-awards"] });
-      toast({ title: "Jaaroverzicht toegevoegd" });
-      setShowAdd(false);
-      setFormData({ year: new Date().getFullYear(), departmentOfYear: "", managerOfYear: "" });
-    },
-    onError: () => toast({ title: "Fout bij opslaan", variant: "destructive" }),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; year: number; departmentOfYear: string; managerOfYear: string }) => {
-      await apiRequest("PATCH", `/api/yearly-awards/${id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/yearly-awards"] });
-      toast({ title: "Jaaroverzicht bijgewerkt" });
-      setEditingId(null);
-    },
-    onError: () => toast({ title: "Fout bij bijwerken", variant: "destructive" }),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/yearly-awards/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/yearly-awards"] });
-      toast({ title: "Jaaroverzicht verwijderd" });
-    },
-    onError: () => toast({ title: "Fout bij verwijderen", variant: "destructive" }),
-  });
-
-  const startEdit = (award: YearlyAward) => {
-    setEditingId(award.id);
-    setFormData({
-      year: award.year,
-      departmentOfYear: award.departmentOfYear || "",
-      managerOfYear: award.managerOfYear || "",
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="grid gap-4 md:grid-cols-3">
-        <Skeleton className="h-40" />
-        <Skeleton className="h-40" />
-        <Skeleton className="h-40" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm flex items-center gap-2" data-testid="text-yearly-awards-title">
-          <Trophy className="h-4 w-4 text-muted-foreground" />
-          Jaarlijkse Prijzen
-        </h3>
-        {isAdmin && (
-          <Button variant="outline" size="sm" onClick={() => setShowAdd(true)} data-testid="button-add-yearly-award">
-            <Plus className="h-4 w-4 mr-1" />
-            Jaar Toevoegen
-          </Button>
-        )}
-      </div>
-
-      {showAdd && isAdmin && (
-        <Card className="border-dashed border-primary/50">
-          <CardContent className="pt-4 space-y-3">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Jaar</label>
-                <Input
-                  type="number"
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() })}
-                  data-testid="input-award-year"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Afdeling van het Jaar</label>
-                <Input
-                  value={formData.departmentOfYear}
-                  onChange={(e) => setFormData({ ...formData, departmentOfYear: e.target.value })}
-                  placeholder="Bijv. Marketing"
-                  data-testid="input-award-department"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Manager van het Jaar</label>
-                <Input
-                  value={formData.managerOfYear}
-                  onChange={(e) => setFormData({ ...formData, managerOfYear: e.target.value })}
-                  placeholder="Bijv. Jan de Vries"
-                  data-testid="input-award-manager"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setFormData({ year: new Date().getFullYear(), departmentOfYear: "", managerOfYear: "" }); }}>
-                Annuleren
-              </Button>
-              <Button size="sm" onClick={() => createMutation.mutate(formData)} disabled={createMutation.isPending} data-testid="button-save-yearly-award">
-                {createMutation.isPending ? "Opslaan..." : "Opslaan"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {(!awards || awards.length === 0) ? (
-        <Card>
-          <CardContent className="py-8">
-            <p className="text-sm text-muted-foreground text-center" data-testid="text-no-yearly-awards">
-              Nog geen jaarlijkse prijzen vastgelegd
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <Trophy className="h-4 w-4" />
-                Jaar
-              </h4>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {awards.map((award) => (
-                <div key={award.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50" data-testid={`award-year-${award.id}`}>
-                  {editingId === award.id ? (
-                    <Input
-                      type="number"
-                      value={formData.year}
-                      onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || award.year })}
-                      className="h-7 text-sm w-24"
-                      data-testid={`input-edit-year-${award.id}`}
-                    />
-                  ) : (
-                    <span className="text-sm font-bold">{award.year}</span>
-                  )}
-                  {isAdmin && editingId !== award.id && (
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(award)} data-testid={`button-edit-award-${award.id}`}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(award.id)} data-testid={`button-delete-award-${award.id}`}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <Building2 className="h-4 w-4" />
-                Afdeling van het Jaar
-              </h4>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {awards.map((award) => (
-                <div key={award.id} className="p-2 rounded-md bg-muted/50" data-testid={`award-department-${award.id}`}>
-                  {editingId === award.id ? (
-                    <Input
-                      value={formData.departmentOfYear}
-                      onChange={(e) => setFormData({ ...formData, departmentOfYear: e.target.value })}
-                      className="h-7 text-sm"
-                      data-testid={`input-edit-department-${award.id}`}
-                    />
-                  ) : (
-                    <span className="text-sm">{award.departmentOfYear || <span className="text-muted-foreground italic">—</span>}</span>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                <UserCog className="h-4 w-4" />
-                Manager van het Jaar
-              </h4>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {awards.map((award) => (
-                <div key={award.id} className="p-2 rounded-md bg-muted/50" data-testid={`award-manager-${award.id}`}>
-                  {editingId === award.id ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={formData.managerOfYear}
-                        onChange={(e) => setFormData({ ...formData, managerOfYear: e.target.value })}
-                        className="h-7 text-sm"
-                        data-testid={`input-edit-manager-${award.id}`}
-                      />
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setEditingId(null)}>
-                          Annuleren
-                        </Button>
-                        <Button size="sm" className="h-6 text-xs" onClick={() => updateMutation.mutate({ id: award.id, ...formData })} disabled={updateMutation.isPending} data-testid={`button-save-edit-${award.id}`}>
-                          Opslaan
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-sm">{award.managerOfYear || <span className="text-muted-foreground italic">—</span>}</span>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-}
-
 const rewardFormSchema = z.object({
   userId: z.string().min(1, "Selecteer een medewerker"),
   points: z.coerce.number().min(1, "Minimaal 1 punt"),
@@ -2785,8 +2550,6 @@ export default function BeloningenPage() {
       )}
 
       {activeTab === "beloningsysteem" && isAdminRole(user?.role) && (
-        <div className="space-y-6">
-        <YearlyAwardsSection isAdmin={isAdminRole(user?.role)} />
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center gap-2 pb-3">
@@ -2861,7 +2624,6 @@ export default function BeloningenPage() {
               )}
             </CardContent>
           </Card>
-        </div>
         </div>
       )}
     </div>

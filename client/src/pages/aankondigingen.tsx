@@ -20,7 +20,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { Plus, Megaphone, Pin, Trash2, AlertCircle, Pencil, FileText, Upload, X, Send, Mail, MailOpen, Reply, Clock, User as UserIcon, Newspaper } from "lucide-react";
-import { apiRequest, queryClient, fetchCsrfToken } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -77,12 +77,10 @@ function AnnouncementFormDialog({
         setUploading(true);
         const formData = new FormData();
         formData.append("pdf", pdfFile);
-        const csrfToken = await fetchCsrfToken();
         const uploadRes = await fetch("/api/upload/pdf", {
           method: "POST",
           body: formData,
           credentials: "include",
-          headers: { "X-CSRF-Token": csrfToken },
         });
         if (!uploadRes.ok) {
           throw new Error("PDF upload mislukt");
@@ -735,12 +733,10 @@ function NieuwsbrievenTab() {
     try {
       const formData = new FormData();
       formData.append("pdf", file);
-      const csrfToken = await fetchCsrfToken();
       const res = await fetch("/api/uploads/nieuwsbrief", {
         method: "POST",
         body: formData,
         credentials: "include",
-        headers: { "X-CSRF-Token": csrfToken },
       });
       if (!res.ok) throw new Error("Upload mislukt");
       queryClient.invalidateQueries({ queryKey: ["/api/uploads/nieuwsbrief"] });
@@ -754,11 +750,9 @@ function NieuwsbrievenTab() {
 
   const handleDelete = async (filename: string) => {
     try {
-      const csrfToken = await fetchCsrfToken();
       const res = await fetch(`/api/uploads/nieuwsbrief/${encodeURIComponent(filename)}`, {
         method: "DELETE",
         credentials: "include",
-        headers: { "X-CSRF-Token": csrfToken },
       });
       if (!res.ok) throw new Error("Verwijderen mislukt");
       queryClient.invalidateQueries({ queryKey: ["/api/uploads/nieuwsbrief"] });

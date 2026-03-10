@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import { isAdminRole } from "@shared/schema";
 import type { HelpContent } from "@shared/schema";
 import NotFound from "@/pages/not-found";
-import SetupPage from "@/pages/setup";
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
 import KalenderPage from "@/pages/kalender";
@@ -157,10 +156,6 @@ function AuthenticatedApp() {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
 
-  const { data: setupStatus, isLoading: setupLoading, refetch: refetchSetup } = useQuery<{ needsSetup: boolean }>({
-    queryKey: ["/api/setup/status"],
-  });
-
   const { data: dbHelpContent } = useQuery<HelpContent[]>({
     queryKey: ["/api/help-content"],
     enabled: !!user,
@@ -180,7 +175,7 @@ function AuthenticatedApp() {
     },
   });
 
-  if (loading || setupLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="space-y-4 w-64">
@@ -190,10 +185,6 @@ function AuthenticatedApp() {
         </div>
       </div>
     );
-  }
-
-  if (setupStatus?.needsSetup) {
-    return <SetupPage onComplete={() => refetchSetup()} />;
   }
 
   if (!user) {

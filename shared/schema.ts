@@ -330,17 +330,6 @@ export const insertHelpContentSchema = createInsertSchema(helpContentTable).omit
 export type InsertHelpContent = z.infer<typeof insertHelpContentSchema>;
 export type HelpContent = typeof helpContentTable.$inferSelect;
 
-export const yearlyAwards = pgTable("yearly_awards", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  year: integer("year").notNull(),
-  departmentOfYear: text("department_of_year"),
-  managerOfYear: text("manager_of_year"),
-});
-
-export const insertYearlyAwardSchema = createInsertSchema(yearlyAwards).omit({ id: true });
-export type InsertYearlyAward = z.infer<typeof insertYearlyAwardSchema>;
-export type YearlyAward = typeof yearlyAwards.$inferSelect;
-
 export function isAdminRole(role?: string | null): boolean {
   return role === "admin" || role === "directeur";
 }

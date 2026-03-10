@@ -17,7 +17,7 @@ A comprehensive office dashboard application with 9 modules and granular permiss
 4. **Organisatie** - Department management with tabs: Afdelingen (department cards with manager info), AO-Procedures (admin-managed procedures with step-by-step instructions per department), Organogram (visual org chart), CAO Info (collective labor agreement overview), Wetgeving (legislation links grouped by category)
 5. **Personalia** - Employee directory with roles and departments
 6. **Verzuim** - Absence/leave management with approval workflow, BVVD (bijzonder verlof) with predefined reasons, vacation day balance tracking per employee, admin vacation day allowance management
-7. **Beloningen** - Four sub-tabs: Functioneringsgesprekken (performance reviews with database storage and year-based filtering), Beoordelingsgesprekken (competency-based assessments where admin configures 5-6 competencies per functie with optional normering descriptions per score level 1-5, each scored 1-5 with auto-calculated total and average, functie dropdown populated from configured functies, competency dropdown with collapsible normering), Jaarplan (yearly planning per employee with afspraken/start/einde/voortgang/status tracking, grouped by employee with color-coded status badges), and Beloningssysteem (Jaarlijkse Prijzen with three-column layout for Jaar/Afdeling van het Jaar/Manager van het Jaar with admin CRUD, plus points-based rewards with leaderboard)
+7. **Beloningen** - Four sub-tabs: Functioneringsgesprekken (performance reviews with database storage and year-based filtering), Beoordelingsgesprekken (competency-based assessments where admin configures 5-6 competencies per functie with optional normering descriptions per score level 1-5, each scored 1-5 with auto-calculated total and average, functie dropdown populated from configured functies, competency dropdown with collapsible normering), Jaarplan (yearly planning per employee with afspraken/start/einde/voortgang/status tracking, grouped by employee with color-coded status badges), and Beloningssysteem (points-based rewards with leaderboard)
 8. **Applicaties** - Application access management with user permissions
 9. **Beheer** - Admin-only user permissions management (toggle module access per user)
 10. **Mijn Profiel** - Personal profile page with own absences, rewards, and access overview
@@ -25,26 +25,15 @@ A comprehensive office dashboard application with 9 modules and granular permiss
 ## Security
 - Helmet middleware for HTTP security headers
 - Rate limiting: 10 requests/15 min on auth endpoints, 100 requests/min on general API
-- CSRF protection: double-submit token pattern via X-CSRF-Token header; token fetched from GET /api/csrf-token; exempted routes: login, request-reset, logout
-- Session cookies: httpOnly, sameSite=lax, secure in production; session regenerated on login
+- Session cookies: httpOnly, sameSite=lax, secure in production
 - Session secret: from SESSION_SECRET env var (random fallback in dev with warning)
 - Password policy: minimum 8 characters, bcrypt with 12 rounds
-- Self-service password reset removed; users submit request, directed to admin for reset
+- Self-service password reset removed; users can look up their username via email, but must contact admin for password reset
 - No email enumeration: reset endpoint returns generic message regardless of email existence
-- File uploads: all uploads use unique filenames with sanitization, 10MB size limit, PDF-only validation; path traversal protection on department parameters
-- /PDF static directory requires authentication
-- Beoordeling scores access restricted to own data, managers, and admins
-- Seed data (demo accounts) skipped in production environment
-
-## First-Run Setup
-- GET /api/setup/status returns { needsSetup: true } when no users exist
-- POST /api/setup/admin creates the first admin user (only works when no users exist, CSRF-exempt)
-- Frontend shows setup page automatically before login when needsSetup is true
-- Setup page at client/src/pages/setup.tsx
 
 ## Authentication & Permissions
 - Session-based with PostgreSQL session store
-- Demo credentials (dev only): admin/admin123, manager/user123, pieter/user123, sophie/user123, thomas/user123
+- Demo credentials: admin/admin123, manager/user123, pieter/user123, sophie/user123, thomas/user123
 - Roles: directeur, admin, manager, employee (different permissions per role)
 - `isAdminRole()` helper from `@shared/schema` checks for both "directeur" and "admin" roles
 - Directeur role has all admin privileges plus exclusive ability to approve manager/admin absence requests

@@ -2,130 +2,132 @@
 
 ## Prerequisites
 
-Install the following software before starting:
+### Node.js
+- **Version:** 20.x (tested with v20.20.0)
+- Download from [nodejs.org](https://nodejs.org/) or use [nvm](https://github.com/nvm-sh/nvm)
 
-| Software   | Version     | Notes                                      |
-|------------|-------------|--------------------------------------------|
-| Node.js    | 20 or higher | Download from https://nodejs.org           |
-| npm        | 10 or higher | Included with Node.js                      |
-| PostgreSQL | 14 or higher | Download from https://www.postgresql.org   |
+### PostgreSQL
+- **Version:** 14 or higher recommended
+- Install via your package manager or download from [postgresql.org](https://www.postgresql.org/download/)
+- Create an empty database:
+  ```sql
+  CREATE DATABASE kantoordashboard;
+  ```
 
 ## Environment Variables
 
-| Variable         | Required    | Description                                                                                      |
-|------------------|-------------|--------------------------------------------------------------------------------------------------|
-| `DATABASE_URL`   | Yes         | PostgreSQL connection string, e.g. `postgresql://username:password@localhost:5432/kantoor_dashboard` |
-| `SESSION_SECRET` | Recommended | A long random string for securing login sessions. A temporary one is auto-generated if not set, but this is not suitable for production. |
-| `PORT`           | No          | The port the server listens on. Defaults to `5000`.                                              |
-| `NODE_ENV`       | No          | Set to `production` for production mode. Defaults to `development`.                              |
+Create a `.env` file in the project root (or set these in your shell):
 
-On Linux/macOS you can set these in your terminal before running:
+| Variable | Required | Description | Example |
+|---|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgresql://user:password@localhost:5432/kantoordashboard` |
+| `SESSION_SECRET` | Recommended | Secret for session encryption (any random string) | `my-secret-key-change-this` |
+
+## Installation
 
 ```bash
-export DATABASE_URL="postgresql://username:password@localhost:5432/kantoor_dashboard"
-export SESSION_SECRET="your-long-random-secret-string-here"
+# 1. Install dependencies
+npm install
+
+# 2. Push database schema (creates all tables)
+npm run db:push
+
+# 3. Start the development server
+npm run dev
 ```
 
-On Windows (PowerShell):
+The app will be available at `http://localhost:5000` (Express serves both the API and the Vite frontend).
 
-```powershell
-$env:DATABASE_URL = "postgresql://username:password@localhost:5432/kantoor_dashboard"
-$env:SESSION_SECRET = "your-long-random-secret-string-here"
+## Available Commands
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start development server (Express + Vite with hot reload) |
+| `npm run build` | Build for production (frontend + backend bundled) |
+| `npm run start` | Start production server from `dist/` |
+| `npm run db:push` | Synchronize database schema with Drizzle |
+| `npm run check` | Run TypeScript type checking |
+
+## Production Build
+
+```bash
+# Build the application
+npm run build
+
+# Set environment variables and start
+DATABASE_URL="postgresql://user:password@localhost:5432/kantoordashboard" npm run start
 ```
 
-## Setup Steps
+## Project Structure
 
-1. **Create a PostgreSQL database**
+```
+├── client/               # Frontend (React + Vite)
+│   └── src/
+│       ├── components/   # UI components (Shadcn/UI)
+│       ├── pages/        # Page components
+│       ├── hooks/        # Custom React hooks
+│       └── lib/          # Utilities (auth, query client)
+├── server/               # Backend (Express)
+│   ├── index.ts          # Server entry point
+│   ├── routes.ts         # API route definitions
+│   ├── storage.ts        # Database access layer
+│   ├── db.ts             # Database connection (pg Pool + Drizzle)
+│   └── seed.ts           # Database seeding
+├── shared/
+│   └── schema.ts         # Drizzle ORM schema + Zod validation (shared between frontend & backend)
+├── uploads/              # File uploads (PDFs, photos) — created automatically
+├── drizzle.config.ts     # Drizzle Kit configuration
+├── vite.config.ts        # Vite configuration
+├── tailwind.config.ts    # Tailwind CSS configuration
+└── package.json          # Dependencies and scripts
+```
 
-   ```sql
-   CREATE DATABASE kantoor_dashboard;
-   ```
+## Key Technology Stack
 
-2. **Install dependencies**
+**Backend:**
+- Express 5 — HTTP server and API
+- Drizzle ORM — Database queries and schema management
+- bcryptjs — Password hashing
+- express-session + connect-pg-simple — Sessions stored in PostgreSQL
+- multer — File upload handling
 
-   ```bash
-   npm install
-   ```
-
-3. **Create the database tables**
-
-   ```bash
-   npm run db:push
-   ```
-
-   This will prompt you to confirm creation of each table. Press enter/confirm for each one.
-
-4. **Start the application**
-
-   For development (with hot-reload):
-
-   ```bash
-   npm run dev
-   ```
-
-   For production:
-
-   ```bash
-   npm run build
-   npm start
-   ```
-
-5. **Open the application**
-
-   Navigate to `http://localhost:5000` in your browser.
-
-## First Launch
-
-On the very first run with an empty database, the app will show a setup screen where you create the initial administrator account. After that you log in normally and can manage all users from the Beheer module.
-
-In development mode (`NODE_ENV=development`), demo seed data is automatically loaded with the following sample accounts:
-
-| Username | Password  | Role      |
-|----------|-----------|-----------|
-| admin    | admin123  | admin     |
-| manager  | user123   | manager   |
-| pieter   | user123   | employee  |
-| sophie   | user123   | employee  |
-| thomas   | user123   | employee  |
-
-In production mode (`NODE_ENV=production`), seeding is skipped entirely. You create all accounts through the setup screen and Beheer module.
-
-## Upload Directories
-
-The app stores uploaded files on disk. These directories are created automatically when needed:
-
-| Directory                          | Contents                        |
-|------------------------------------|---------------------------------|
-| `uploads/Aankondigingen/`          | Announcement PDF attachments    |
-| `uploads/CAO/`                     | Collective labor agreement docs |
-| `uploads/Wetgeving/`               | Legislation documents           |
-| `uploads/Nieuwsbrief/`             | Newsletter files                |
-| `uploads/Instructies/{department}/`| Department instruction files    |
-| `uploads/public/`                  | Profile photos and public images|
+**Frontend:**
+- React 18 — UI framework
+- Vite — Build tool and dev server
+- TailwindCSS — Utility-first CSS
+- Shadcn/UI (Radix UI) — Component library
+- TanStack React Query — Server state management
+- Wouter — Client-side routing
+- date-fns — Date formatting (Dutch locale)
+- Recharts — Charts and graphs
+- Lucide React — Icons
 
 ## Database Tables
 
-All 22+ tables are created automatically by `npm run db:push`. These include: users, events, announcements, departments, absences, rewards, applications, app_access, messages, ao_procedures, ao_instructions, position_history, personal_development, legislation_links, cao_documents, site_settings, functionering_reviews, competencies, beoordeling_reviews, beoordeling_scores, jaarplan_items, yearly_awards, help_content, and a session table for login sessions.
+The schema (defined in `shared/schema.ts`) includes the following tables:
 
-## Replit-Specific Items
+- `users` — User accounts with roles, departments, permissions
+- `departments` — Organization departments
+- `events` — Calendar events
+- `announcements` — Company announcements
+- `absences` — Leave/absence requests
+- `rewards` — Employee reward points
+- `applications` — External application links
+- `app_access` — Application access permissions per user
+- `messages` / `message_replies` — Internal messaging
+- `ao_procedures` / `ao_instructions` — Administrative procedures
+- `position_history` / `personal_development` — Employee history
+- `legislation_links` — Legal references
+- `cao_documents` — Collective labor agreement documents
+- `functionering_reviews` — Performance review records
+- `competencies` — Competency definitions per role
+- `beoordeling_reviews` / `beoordeling_scores` — Competency-based assessments
+- `jaarplan_items` — Annual plan items with progress tracking
+- `help_content` — Page-specific help documentation
+- `site_settings` — Application settings (login photo, etc.)
 
-The following files and packages are only used in the Replit hosting environment and can be safely ignored or removed when running locally:
+## Notes
 
-- `.replit` file — Replit run configuration
-- `replit.nix` — Replit system package definitions
-- `replit.md` — Replit agent memory file
-
-Three Vite dev plugins are Replit-specific but will not activate on your machine (they check for the `REPL_ID` environment variable):
-
-- `@replit/vite-plugin-cartographer`
-- `@replit/vite-plugin-dev-banner`
-- `@replit/vite-plugin-runtime-error-modal`
-
-You can optionally remove these from `package.json` devDependencies and from `vite.config.ts` if you want a cleaner setup.
-
-## Troubleshooting
-
-- **`DATABASE_URL` error on startup** — Make sure your PostgreSQL server is running and the connection string is correct.
-- **Port already in use** — Set a different port with `export PORT=3000` (or any available port).
-- **`db:push` hangs or fails** — Ensure the database exists and the user in your connection string has permission to create tables.
-- **Uploads not working** — Make sure the application has write permission to the project directory so it can create the `uploads/` folders.
+- **Replit-specific Vite plugins** (`@replit/vite-plugin-cartographer`, `@replit/vite-plugin-dev-banner`, `@replit/vite-plugin-runtime-error-modal`) are only loaded when the `REPL_ID` environment variable is set. They are safely skipped when running locally.
+- **Uploads directory:** The app stores uploaded files (PDFs, photos) in the `uploads/` folder. Subdirectories are created automatically as needed.
+- **Default admin account:** After running `db:push`, the seed script creates initial users. Check `server/seed.ts` for default credentials.

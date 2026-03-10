@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { User } from "@shared/schema";
-import { apiRequest, queryClient, clearCsrfToken } from "./queryClient";
+import { apiRequest, queryClient } from "./queryClient";
 
 interface AuthContextType {
   user: User | null;
@@ -38,13 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string) => {
     const res = await apiRequest("POST", "/api/auth/login", { username, password });
     const data = await res.json();
-    clearCsrfToken();
     setUser(data);
   };
 
   const logout = async () => {
     await apiRequest("POST", "/api/auth/logout");
-    clearCsrfToken();
     setUser(null);
     queryClient.clear();
   };
