@@ -530,6 +530,65 @@ export async function registerRoutes(
     res.json(stats);
   });
 
+  app.get("/api/absences/today", requireAuth, async (req, res) => {
+    const userId = (req.session as any).userId;
+    const currentUser = await storage.getUser(userId);
+    if (!currentUser) return res.status(401).json({ message: "Niet ingelogd" });
+
+    if (!isAdminRole(currentUser.role) && currentUser.role !== "manager") {
+      return res.status(403).json({ message: "Geen toegang" });
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const allAbsences = isAdminRole(currentUser.role)
+      ? await storage.getAbsences()
+      : currentUser.department
+        ? await storage.getAbsencesByDepartment(currentUser.department)
+        : [];
+
+    const todayAbsences = allAbsences.filter(a => {
+      return (a.status === "approved" || a.status === "pending") &&
+        a.startDate <= today && a.endDate >= today;
+    });
+
+    const allDepts = await storage.getDepartments();
+    const allUsers = await storage.getUsers();
+
+    const grouped: Record<string, { managerName: string; managerRole: string; department: string; employees: { name: string; type: string; status: string; halfDay: string | null }[] }> = {};
+
+    for (const absence of todayAbsences) {
+      const dept = absence.userDepartment || "Onbekend";
+      const deptRecord = allDepts.find(d => d.name === dept);
+      let managerName = "Geen beheerder";
+      let managerRole = "";
+      if (deptRecord?.managerId) {
+        const mgr = allUsers.find(u => u.id === deptRecord.managerId);
+        if (mgr) {
+          managerName = mgr.fullName;
+          managerRole = mgr.role;
+        }
+      }
+
+      const key = dept;
+      if (!grouped[key]) {
+        grouped[key] = { managerName, managerRole, department: dept, employees: [] };
+      }
+      grouped[key].employees.push({
+        name: absence.userName || "Onbekend",
+        type: absence.type,
+        status: absence.status,
+        halfDay: absence.halfDay,
+      });
+    }
+
+    res.json({
+      date: today,
+      totalAbsent: todayAbsences.length,
+      departments: Object.values(grouped),
+    });
+  });
+
   app.get("/api/users", requireAuth, async (_req, res) => {
     const allUsers = await storage.getUsers();
     res.json(allUsers.map(({ password: _, ...u }) => u));

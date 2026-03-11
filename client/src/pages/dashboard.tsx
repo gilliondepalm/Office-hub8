@@ -10,6 +10,8 @@ import {
   AlertCircle,
   CheckCircle,
   Camera,
+  UserX,
+  Building2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -156,6 +158,22 @@ export default function DashboardPage() {
     queryKey: [isAdmin ? "/api/absences" : "/api/absences/mine"],
   });
 
+  const isManagerOrAdmin = isAdmin || user?.role === "manager";
+
+  const { data: todayAbsences, isLoading: todayLoading } = useQuery<{
+    date: string;
+    totalAbsent: number;
+    departments: {
+      managerName: string;
+      managerRole: string;
+      department: string;
+      employees: { name: string; type: string; status: string; halfDay: string | null }[];
+    }[];
+  }>({
+    queryKey: ["/api/absences/today"],
+    enabled: isManagerOrAdmin,
+  });
+
   const recentAnnouncements = announcements?.slice(0, 4) || [];
   const pendingAbsences = absences?.filter((a) => a.status === "pending").slice(0, 5) || [];
 
@@ -294,6 +312,91 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {isManagerOrAdmin && (
+          <Card className="border border-border/60" data-testid="card-today-absences">
+            <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-red-100 dark:bg-red-900/30">
+                  <UserX className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="font-semibold text-sm">Vandaag Afwezig</h3>
+                {todayAbsences?.date && (
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(todayAbsences.date + "T00:00:00"), "EEEE d MMMM yyyy", { locale: nl })}
+                  </span>
+                )}
+              </div>
+              <Badge variant={todayAbsences?.totalAbsent ? "destructive" : "secondary"} className="text-xs">
+                {todayAbsences?.totalAbsent ?? 0} afwezig
+              </Badge>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {todayLoading ? (
+                <div className="space-y-2 py-2">
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                </div>
+              ) : !todayAbsences || todayAbsences.totalAbsent === 0 ? (
+                <div className="flex flex-col items-center py-6 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-3">
+                    <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Alle medewerkers zijn vandaag aanwezig</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {todayAbsences.departments.map((dept) => {
+                    const typeLabels: Record<string, string> = {
+                      sick: "Ziekte", vacation: "Vakantie", personal: "Persoonlijk", bvvd: "Bijzonder verlof", other: "Overig",
+                    };
+                    const typeColors: Record<string, string> = {
+                      sick: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800",
+                      vacation: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
+                      personal: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800",
+                      bvvd: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800",
+                      other: "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-800",
+                    };
+                    const roleLabels: Record<string, string> = { admin: "Beheerder", manager: "Manager", directeur: "Directeur" };
+                    return (
+                      <div key={dept.department} className="rounded-lg border border-border/60 p-3" data-testid={`dept-absence-${dept.department}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-semibold">{dept.department}</span>
+                          <span className="text-xs text-muted-foreground">
+                            — {dept.managerName}{dept.managerRole ? ` (${roleLabels[dept.managerRole] || dept.managerRole})` : ""}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {dept.employees.map((emp, idx) => (
+                            <div key={idx} className="flex items-center justify-between gap-2 py-1 px-2 rounded-md bg-muted/40" data-testid={`absent-employee-${idx}`}>
+                              <span className="text-sm">{emp.name}</span>
+                              <div className="flex items-center gap-1.5">
+                                {emp.halfDay && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {emp.halfDay === "morning" ? "Ochtend" : "Middag"}
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className={`text-xs ${typeColors[emp.type] || ""}`}>
+                                  {typeLabels[emp.type] || emp.type}
+                                </Badge>
+                                {emp.status === "pending" && (
+                                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
+                                    In afwachting
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
