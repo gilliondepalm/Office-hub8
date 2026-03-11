@@ -168,20 +168,15 @@ function AnnouncementFormDialog({
               </FormItem>
             )} />
             <FormField control={form.control} name="priority" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Prioriteit</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-announcement-priority"><SelectValue /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="low">Laag</SelectItem>
-                    <SelectItem value="normal">Normaal</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">Hoog</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
+              <FormItem className="flex items-center gap-3">
+                <FormLabel className="mt-0">Hoge prioriteit</FormLabel>
+                <FormControl>
+                  <Switch
+                    checked={field.value === "high"}
+                    onCheckedChange={(checked) => field.onChange(checked ? "high" : "normal")}
+                    data-testid="switch-announcement-priority"
+                  />
+                </FormControl>
               </FormItem>
             )} />
             <FormField control={form.control} name="pinned" render={({ field }) => (
@@ -775,8 +770,6 @@ export default function AankondigingenPage() {
                       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${
                         ann.priority === "high"
                           ? "bg-destructive/10 text-destructive"
-                          : ann.priority === "medium"
-                          ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
                           : "bg-muted text-muted-foreground"
                       }`}>
                         {ann.priority === "high" ? <AlertCircle className="h-4 w-4" /> : <Megaphone className="h-4 w-4" />}
@@ -789,9 +782,9 @@ export default function AankondigingenPage() {
                               <Pin className="h-3 w-3" /> Vastgezet
                             </Badge>
                           )}
-                          <Badge variant={ann.priority === "high" ? "destructive" : "outline"} className="text-xs">
-                            {ann.priority === "high" ? "Hoog" : ann.priority === "medium" ? "Medium" : ann.priority === "low" ? "Laag" : "Normaal"}
-                          </Badge>
+                          {ann.priority === "high" && (
+                            <Badge variant="destructive" className="text-xs">Hoog</Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{ann.content}</p>
                         {ann.pdfUrl && (
