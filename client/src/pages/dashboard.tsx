@@ -213,12 +213,12 @@ export default function DashboardPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[hsl(152,40%,18%/0.9)] via-[hsl(152,35%,22%/0.8)] to-[hsl(152,30%,25%/0.6)]" />
         <div className="relative z-10 h-full flex items-center px-8">
-          <div className="space-y-2 flex-1">
-            <p className="text-[hsl(48,96%,53%)] font-semibold text-sm tracking-wide uppercase">{greeting()}</p>
-            <h1 className="text-3xl font-bold text-white" data-testid="text-dashboard-title">
+          <div className="space-y-2 flex-1 bg-black/30 backdrop-blur-sm rounded-lg px-5 py-3 w-fit">
+            <p className="text-[hsl(48,96%,53%)] font-semibold text-sm tracking-wide uppercase drop-shadow-md">{greeting()}</p>
+            <h1 className="text-3xl font-bold text-white drop-shadow-md" data-testid="text-dashboard-title">
               {user?.fullName}
             </h1>
-            <p className="text-white/75 text-sm max-w-lg">
+            <p className="text-white/85 text-sm max-w-lg drop-shadow-sm">
               Welkom bij het Kantoor Dashboard. Hier vindt u een overzicht van uw kantooromgeving.
             </p>
           </div>
