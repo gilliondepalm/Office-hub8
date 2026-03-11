@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "7rPcuyNJ4_r_hHHvs_Ceb"
+uri = "file://RUN_LOCALLY.md"
+type = "text"
+title = "RUN_LOCALLY.md"
