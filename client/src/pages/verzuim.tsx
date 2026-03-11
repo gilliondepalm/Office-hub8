@@ -21,6 +21,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Clock, CheckCircle, XCircle, AlertCircle, Palmtree, CalendarDays, Pencil, ClipboardList, Eye, FileBarChart, Filter, Scissors, Trash2, X } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -315,6 +316,7 @@ export default function VerzuimPage() {
   const [snipperdagName, setSnipperdagName] = useState("");
   const [snipperdagDate, setSnipperdagDate] = useState("");
   const [rechtOpen, setRechtOpen] = useState(false);
+  const [selectedAbsences, setSelectedAbsences] = useState<Set<string>>(new Set());
   const [editingUser, setEditingUser] = useState<{ id: string; name: string; days: number } | null>(null);
   const [newDays, setNewDays] = useState("");
   const [editingSaldoOud, setEditingSaldoOud] = useState<{ id: string; name: string; days: number } | null>(null);
@@ -384,6 +386,24 @@ export default function VerzuimPage() {
     },
     onError: () => {
       toast({ title: "Geen rechten voor deze actie", variant: "destructive" });
+    },
+  });
+
+  const bulkApproveMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) {
+        await apiRequest("PATCH", `/api/absences/${id}`, { status: "approved" });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/absences"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vacation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      setSelectedAbsences(new Set());
+      toast({ title: `${selectedAbsences.size} verzoek(en) goedgekeurd` });
+    },
+    onError: () => {
+      toast({ title: "Fout bij goedkeuren", variant: "destructive" });
     },
   });
 
@@ -462,6 +482,14 @@ export default function VerzuimPage() {
 
   const isAdmin = isAdminRole(user?.role);
   const isAdminOrManager = isAdminRole(user?.role) || user?.role === "manager";
+
+  const canApprove = (absence: any) => {
+    if (absence.status !== "pending" || absence.userId === user?.id) return false;
+    if (user?.role === "directeur") return true;
+    if (isAdminRole(user?.role) && !isAdminRole(absence.userRole) && absence.userRole !== "manager") return true;
+    if (user?.role === "manager" && absence.userRole === "employee") return true;
+    return false;
+  };
 
   const myBalance = vacationBalances?.find(b => b.userId === user?.id);
 
@@ -794,8 +822,43 @@ export default function VerzuimPage() {
                 </Card>
               );
             }
+            const approvableIds = filtered.filter(a => canApprove(a)).map(a => a.id);
+            const allSelected = approvableIds.length > 0 && approvableIds.every(id => selectedAbsences.has(id));
+            const someSelected = approvableIds.some(id => selectedAbsences.has(id));
+
+            const toggleAll = () => {
+              if (allSelected) {
+                setSelectedAbsences(new Set());
+              } else {
+                setSelectedAbsences(new Set(approvableIds));
+              }
+            };
+
+            const toggleOne = (id: string) => {
+              setSelectedAbsences(prev => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              });
+            };
+
             return (
               <Card>
+                {isAdminOrManager && selectedAbsences.size > 0 && (
+                  <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
+                    <span className="text-sm font-medium">{selectedAbsences.size} verzoek(en) geselecteerd</span>
+                    <Button
+                      size="sm"
+                      onClick={() => bulkApproveMutation.mutate(Array.from(selectedAbsences))}
+                      disabled={bulkApproveMutation.isPending}
+                      data-testid="button-bulk-approve"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      {bulkApproveMutation.isPending ? "Bezig..." : "Alles Goedkeuren"}
+                    </Button>
+                  </div>
+                )}
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
@@ -806,7 +869,21 @@ export default function VerzuimPage() {
                           <TableHead>Periode</TableHead>
                           <TableHead>Reden</TableHead>
                           <TableHead>Status</TableHead>
-                          {isAdminOrManager && <TableHead>Actie</TableHead>}
+                          {isAdminOrManager && (
+                            <TableHead>
+                              <div className="flex items-center gap-2">
+                                <span>Actie</span>
+                                {approvableIds.length > 0 && (
+                                  <Checkbox
+                                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                                    onCheckedChange={toggleAll}
+                                    data-testid="checkbox-select-all"
+                                    aria-label="Selecteer alle verzoeken"
+                                  />
+                                )}
+                              </div>
+                            </TableHead>
+                          )}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -828,6 +905,7 @@ export default function VerzuimPage() {
                               const displayReason = absence.type === "bvvd" && absence.bvvdReason
                                 ? absence.bvvdReason + (absence.reason ? ` - ${absence.reason}` : "")
                                 : absence.reason || "-";
+                              const isApprovable = canApprove(absence);
                               return (
                                 <TableRow key={absence.id} data-testid={`row-absence-${absence.id}`}>
                                   <TableCell className={`font-medium text-sm ${isAdminOrManager ? "pl-6" : ""}`}>
@@ -852,12 +930,14 @@ export default function VerzuimPage() {
                                   </TableCell>
                                   {isAdminOrManager && (
                                     <TableCell>
-                                      {absence.status === "pending" && absence.userId !== user?.id && (
-                                        user?.role === "directeur" ||
-                                        (isAdminRole(user?.role) && !isAdminRole((absence as any).userRole) && (absence as any).userRole !== "manager") ||
-                                        (user?.role === "manager" && (absence as any).userRole === "employee")
-                                      ) && (
-                                        <div className="flex gap-1">
+                                      {isApprovable && (
+                                        <div className="flex items-center gap-2">
+                                          <Checkbox
+                                            checked={selectedAbsences.has(absence.id)}
+                                            onCheckedChange={() => toggleOne(absence.id)}
+                                            data-testid={`checkbox-absence-${absence.id}`}
+                                            aria-label={`Selecteer verzoek van ${(absence as any).userName}`}
+                                          />
                                           <Button
                                             size="sm"
                                             variant="outline"
