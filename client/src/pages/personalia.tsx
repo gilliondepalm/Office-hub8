@@ -36,7 +36,7 @@ const userFormSchema = z.object({
   username: z.string().min(1, "Gebruikersnaam is verplicht"),
   password: z.string().min(4, "Minimaal 4 tekens"),
   fullName: z.string().min(1, "Volledige naam is verplicht"),
-  email: z.string().email("Ongeldig e-mailadres"),
+  email: z.string().email("Ongeldig e-mailadres").or(z.literal("")).optional(),
   role: z.string().default("employee"),
   department: z.string().optional(),
   startDate: z.string().min(1, "Datum in dienst is verplicht"),
@@ -49,7 +49,7 @@ const editFormSchema = z.object({
   username: z.string().min(1, "Gebruikersnaam is verplicht"),
   password: z.string().optional(),
   fullName: z.string().min(1, "Volledige naam is verplicht"),
-  email: z.string().email("Ongeldig e-mailadres"),
+  email: z.string().email("Ongeldig e-mailadres").or(z.literal("")).optional(),
   role: z.string(),
   department: z.string().optional(),
   startDate: z.string().min(1, "Datum in dienst is verplicht"),
@@ -96,7 +96,7 @@ function EditDialog({
       const payload: Record<string, any> = {
         username: data.username,
         fullName: data.fullName,
-        email: data.email,
+        email: data.email || "",
         role: data.role,
         department: data.department || null,
         startDate: data.startDate,
@@ -969,6 +969,7 @@ export default function PersonaliaPage() {
     mutationFn: async (data: z.infer<typeof userFormSchema>) => {
       await apiRequest("POST", "/api/users", {
         ...data,
+        email: data.email || "",
         department: data.department || null,
         birthDate: data.birthDate || null,
         phoneExtension: data.phoneExtension || null,
