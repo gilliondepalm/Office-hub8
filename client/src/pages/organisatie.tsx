@@ -362,11 +362,12 @@ function ProcedureInstructions({
               <Button
                 size="icon"
                 variant="ghost"
-                className="shrink-0 invisible group-hover:visible"
+                className="shrink-0 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => onDeleteInstruction(instr.id)}
+                title="Stap verwijderen"
                 data-testid={`button-delete-instruction-${instr.id}`}
               >
-                <Trash2 className="h-3 w-3 text-muted-foreground" />
+                <Trash2 className="h-3 w-3 text-destructive" />
               </Button>
             )}
           </div>
