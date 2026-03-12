@@ -18,6 +18,9 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Avatar, AvatarFallback,
 } from "@/components/ui/avatar";
 import {
@@ -52,6 +55,8 @@ const departmentFormSchema = z.object({
 const jobFunctionFormSchema = z.object({
   name: z.string().min(1, "Naam is verplicht"),
   description: z.string().optional(),
+  departmentId: z.string().optional(),
+  sortOrder: z.number().int().min(0).default(0),
 });
 
 // ─── Dialogs ─────────────────────────────────────────────────────────────────
@@ -510,20 +515,26 @@ function FunctiesTab() {
   const { toast } = useToast();
 
   const { data: jobFunctionList, isLoading } = useQuery<JobFunction[]>({ queryKey: ["/api/job-functions"] });
+  const { data: departments } = useQuery<Department[]>({ queryKey: ["/api/departments"] });
 
   const form = useForm<z.infer<typeof jobFunctionFormSchema>>({
     resolver: zodResolver(jobFunctionFormSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: { name: "", description: "", departmentId: "", sortOrder: 0 },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof jobFunctionFormSchema>) => {
-      await apiRequest("POST", "/api/job-functions", { name: data.name, description: data.description || null });
+      await apiRequest("POST", "/api/job-functions", {
+        name: data.name,
+        description: data.description || null,
+        departmentId: data.departmentId || null,
+        sortOrder: data.sortOrder ?? 0,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/job-functions"] });
       toast({ title: "Functie aangemaakt" });
-      setOpen(false); form.reset();
+      setOpen(false); form.reset({ name: "", description: "", departmentId: "", sortOrder: 0 });
     },
     onError: () => { toast({ title: "Fout bij aanmaken", variant: "destructive" }); },
   });
@@ -538,12 +549,17 @@ function FunctiesTab() {
 
   const editForm = useForm<z.infer<typeof jobFunctionFormSchema>>({
     resolver: zodResolver(jobFunctionFormSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: { name: "", description: "", departmentId: "", sortOrder: 0 },
   });
 
   const editMutation = useMutation({
     mutationFn: async (data: z.infer<typeof jobFunctionFormSchema> & { id: string }) => {
-      await apiRequest("PATCH", `/api/job-functions/${data.id}`, { name: data.name, description: data.description || null });
+      await apiRequest("PATCH", `/api/job-functions/${data.id}`, {
+        name: data.name,
+        description: data.description || null,
+        departmentId: data.departmentId || null,
+        sortOrder: data.sortOrder ?? 0,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/job-functions"] });
@@ -554,45 +570,120 @@ function FunctiesTab() {
   });
 
   const openEdit = (func: JobFunction) => {
-    editForm.reset({ name: func.name, description: func.description || "" });
+    editForm.reset({
+      name: func.name,
+      description: func.description || "",
+      departmentId: func.departmentId || "",
+      sortOrder: func.sortOrder ?? 0,
+    });
     setEditFunc(func);
   };
 
+  const getDeptName = (deptId: string | null) => {
+    if (!deptId) return null;
+    return departments?.find((d) => d.id === deptId)?.name ?? null;
+  };
+
+  const grouped = (() => {
+    if (!jobFunctionList) return [];
+    const map = new Map<string | null, JobFunction[]>();
+    for (const f of jobFunctionList) {
+      const key = f.departmentId ?? null;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(f);
+    }
+    const result: { deptId: string | null; deptName: string; funcs: JobFunction[] }[] = [];
+    map.forEach((funcs, deptId) => {
+      const deptName = deptId ? (getDeptName(deptId) ?? "Onbekende Afdeling") : "Geen Afdeling";
+      result.push({ deptId, deptName, funcs });
+    });
+    result.sort((a, b) => {
+      if (a.deptId === null) return 1;
+      if (b.deptId === null) return -1;
+      return a.deptName.localeCompare(b.deptName);
+    });
+    return result;
+  })();
+
+  const functionFormFields = (control: any, testPrefix: string) => (
+    <>
+      <FormField control={control} name="name" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Naam</FormLabel>
+          <FormControl><Input {...field} placeholder="Bijv. HR Medewerker" data-testid={`${testPrefix}-name`} /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField control={control} name="departmentId" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Afdeling</FormLabel>
+          <Select onValueChange={field.onChange} value={field.value || ""}>
+            <FormControl>
+              <SelectTrigger data-testid={`${testPrefix}-dept`}><SelectValue placeholder="Selecteer afdeling" /></SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem value="none">— Geen afdeling —</SelectItem>
+              {departments?.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField control={control} name="sortOrder" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Rangorde (in organogram)</FormLabel>
+          <FormControl>
+            <Input
+              type="number"
+              min={0}
+              {...field}
+              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+              placeholder="0 = hoogste rang"
+              data-testid={`${testPrefix}-sort`}
+            />
+          </FormControl>
+          <p className="text-xs text-muted-foreground">Lagere waarde = hoger in het organogram</p>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField control={control} name="description" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Beschrijving (optioneel)</FormLabel>
+          <FormControl><Textarea {...field} data-testid={`${testPrefix}-desc`} /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+    </>
+  );
+
   if (isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28" />)}
+      <div className="space-y-4">
+        {[1, 2].map((i) => <Skeleton key={i} className="h-40" />)}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm text-muted-foreground max-w-xl">
+          Functies per afdeling bepalen de keuzelijst bij het aanmaken van medewerkers in Personalia.
+          De rangorde bepaalt de volgorde van medewerkers binnen een afdeling in het Organogram.
+        </p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="button-add-job-function">
+            <Button className="shrink-0" data-testid="button-add-job-function">
               <Plus className="h-4 w-4 mr-2" />Nieuwe Functie
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Nieuwe Functie</DialogTitle></DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((d) => createMutation.mutate(d))} className="space-y-4">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Naam</FormLabel>
-                    <FormControl><Input {...field} placeholder="Bijv. HR Medewerker" data-testid="input-job-function-name" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Beschrijving (optioneel)</FormLabel>
-                    <FormControl><Textarea {...field} data-testid="input-job-function-description" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+              <form onSubmit={form.handleSubmit((d) => createMutation.mutate({ ...d, departmentId: d.departmentId === "none" ? "" : d.departmentId }))} className="space-y-4">
+                {functionFormFields(form.control, "input-job-function")}
                 <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-job-function">
                   {createMutation.isPending ? "Opslaan..." : "Functie Opslaan"}
                 </Button>
@@ -602,7 +693,7 @@ function FunctiesTab() {
         </Dialog>
       </div>
 
-      {(!jobFunctionList || jobFunctionList.length === 0) ? (
+      {grouped.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center py-12">
             <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
@@ -611,33 +702,45 @@ function FunctiesTab() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {jobFunctionList.map((func) => (
-            <Card key={func.id} className="hover-elevate">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <Briefcase className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm" data-testid={`text-job-function-${func.id}`}>{func.name}</h3>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" onClick={() => openEdit(func)} data-testid={`button-edit-job-function-${func.id}`}>
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(func.id)} data-testid={`button-delete-job-function-${func.id}`}>
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </div>
-                {func.description && (
-                  <p className="text-sm text-muted-foreground mt-3 line-clamp-2">{func.description}</p>
-                )}
-              </CardContent>
-            </Card>
+        <div className="space-y-6">
+          {grouped.map(({ deptId, deptName, funcs }) => (
+            <div key={deptId ?? "none"}>
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-sm">{deptName}</h3>
+                <Badge variant="outline" className="text-xs">{funcs.length} {funcs.length === 1 ? "functie" : "functies"}</Badge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {funcs.map((func) => (
+                  <Card key={func.id} className="hover-elevate">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+                            <Briefcase className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm" data-testid={`text-job-function-${func.id}`}>{func.name}</p>
+                            <p className="text-xs text-muted-foreground">Rang {func.sortOrder}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(func)} data-testid={`button-edit-job-function-${func.id}`}>
+                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteMutation.mutate(func.id)} data-testid={`button-delete-job-function-${func.id}`}>
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      </div>
+                      {func.description && (
+                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{func.description}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -646,21 +749,9 @@ function FunctiesTab() {
         <DialogContent>
           <DialogHeader><DialogTitle>Functie Bewerken</DialogTitle></DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((d) => editFunc && editMutation.mutate({ ...d, id: editFunc.id }))} className="space-y-4">
-              <FormField control={editForm.control} name="name" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Naam</FormLabel>
-                  <FormControl><Input {...field} data-testid="input-edit-job-function-name" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={editForm.control} name="description" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Beschrijving (optioneel)</FormLabel>
-                  <FormControl><Textarea {...field} data-testid="input-edit-job-function-description" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+            <form onSubmit={editForm.handleSubmit((d) => editFunc && editMutation.mutate({ ...d, id: editFunc.id, departmentId: d.departmentId === "none" ? "" : d.departmentId }))} className="space-y-4">
+              {functionFormFields(editForm.control, "input-edit-job-function")}
+              
               <Button type="submit" className="w-full" disabled={editMutation.isPending} data-testid="button-submit-edit-job-function">
                 {editMutation.isPending ? "Opslaan..." : "Wijzigingen Opslaan"}
               </Button>

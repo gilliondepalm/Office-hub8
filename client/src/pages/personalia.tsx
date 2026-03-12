@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PageHero } from "@/components/page-hero";
@@ -27,7 +27,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import type { User, Department, PositionHistory, PersonalDevelopment } from "@shared/schema";
+import type { User, Department, PositionHistory, PersonalDevelopment, JobFunction } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@shared/schema";
@@ -74,6 +74,7 @@ function EditDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { toast } = useToast();
+  const { data: jobFunctionList } = useQuery<JobFunction[]>({ queryKey: ["/api/job-functions"] });
   const form = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
     defaultValues: {
@@ -101,7 +102,7 @@ function EditDialog({
         startDate: data.startDate,
         birthDate: data.birthDate || null,
         phoneExtension: data.phoneExtension || null,
-        functie: data.functie || null,
+        functie: (data.functie === "none" || !data.functie) ? null : data.functie,
       };
       if (data.password && data.password.length > 0) {
         payload.password = data.password;
@@ -117,6 +118,12 @@ function EditDialog({
       toast({ title: "Fout bij bijwerken", description: err.message, variant: "destructive" });
     },
   });
+
+  const watchedDept = useWatch({ control: form.control, name: "department" });
+  const editDeptId = departments?.find((d) => d.name === watchedDept)?.id ?? null;
+  const editFunctions = editDeptId
+    ? (jobFunctionList?.filter((f) => f.departmentId === editDeptId) ?? [])
+    : (jobFunctionList ?? []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -220,7 +227,21 @@ function EditDialog({
             <FormField control={form.control} name="functie" render={({ field }) => (
               <FormItem>
                 <FormLabel>Functie</FormLabel>
-                <FormControl><Input {...field} placeholder="bijv. Landmeter, Administratief Medewerker" data-testid="input-edit-functie" /></FormControl>
+                {editFunctions.length > 0 ? (
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger data-testid="input-edit-functie"><SelectValue placeholder="Selecteer functie" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">— Geen functie —</SelectItem>
+                      {editFunctions.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((f) => (
+                        <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <FormControl><Input {...field} placeholder="bijv. Landmeter, Administratief Medewerker" data-testid="input-edit-functie" /></FormControl>
+                )}
                 <FormMessage />
               </FormItem>
             )} />
@@ -929,6 +950,10 @@ export default function PersonaliaPage() {
     queryKey: ["/api/departments"],
   });
 
+  const { data: jobFunctionList } = useQuery<JobFunction[]>({
+    queryKey: ["/api/job-functions"],
+  });
+
   const createForm = useForm<z.infer<typeof userFormSchema>>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
@@ -946,7 +971,7 @@ export default function PersonaliaPage() {
         department: data.department || null,
         birthDate: data.birthDate || null,
         phoneExtension: data.phoneExtension || null,
-        functie: data.functie || null,
+        functie: (data.functie === "none" || !data.functie) ? null : data.functie,
         avatar: null,
         active: true,
         endDate: null,
@@ -988,6 +1013,12 @@ export default function PersonaliaPage() {
     employee: "Medewerker",
     directeur: "Directeur",
   };
+
+  const createWatchedDept = useWatch({ control: createForm.control, name: "department" });
+  const createDeptId = departments?.find((d) => d.name === createWatchedDept)?.id ?? null;
+  const createFunctions = createDeptId
+    ? (jobFunctionList?.filter((f) => f.departmentId === createDeptId) ?? [])
+    : (jobFunctionList ?? []);
 
   if (isLoading) {
     return (
@@ -1116,7 +1147,21 @@ export default function PersonaliaPage() {
                   <FormField control={createForm.control} name="functie" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Functie</FormLabel>
-                      <FormControl><Input {...field} placeholder="bijv. Landmeter, Administratief Medewerker" data-testid="input-user-functie" /></FormControl>
+                      {createFunctions.length > 0 ? (
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="input-user-functie"><SelectValue placeholder="Selecteer functie" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">— Geen functie —</SelectItem>
+                            {createFunctions.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((f) => (
+                              <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <FormControl><Input {...field} placeholder="bijv. Landmeter, Administratief Medewerker" data-testid="input-user-functie" /></FormControl>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )} />

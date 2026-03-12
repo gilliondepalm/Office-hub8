@@ -1006,7 +1006,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getJobFunctions(): Promise<JobFunction[]> {
-    return await db.select().from(jobFunctions).orderBy(jobFunctions.name);
+    return await db.select().from(jobFunctions).orderBy(jobFunctions.departmentId, jobFunctions.sortOrder, jobFunctions.name);
   }
 
   async createJobFunction(data: InsertJobFunction): Promise<JobFunction> {

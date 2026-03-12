@@ -1142,9 +1142,14 @@ export async function registerRoutes(
     if (!sessionUser || !isAdminRole(sessionUser.role)) {
       return res.status(403).json({ message: "Alleen admin/directeur" });
     }
-    const { name, description } = req.body;
+    const { name, description, departmentId, sortOrder } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: "Naam is verplicht" });
-    const created = await storage.createJobFunction({ name: name.trim(), description: description || null });
+    const created = await storage.createJobFunction({
+      name: name.trim(),
+      description: description || null,
+      departmentId: departmentId || null,
+      sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : 0,
+    });
     res.json(created);
   });
 
@@ -1153,8 +1158,13 @@ export async function registerRoutes(
     if (!sessionUser || !isAdminRole(sessionUser.role)) {
       return res.status(403).json({ message: "Alleen admin/directeur" });
     }
-    const { name, description } = req.body;
-    const updated = await storage.updateJobFunction(req.params.id, { name: name?.trim(), description: description || null });
+    const { name, description, departmentId, sortOrder } = req.body;
+    const updated = await storage.updateJobFunction(req.params.id, {
+      ...(name !== undefined && { name: name.trim() }),
+      ...(description !== undefined && { description: description || null }),
+      ...(departmentId !== undefined && { departmentId: departmentId || null }),
+      ...(sortOrder !== undefined && { sortOrder: parseInt(sortOrder) }),
+    });
     res.json(updated);
   });
 

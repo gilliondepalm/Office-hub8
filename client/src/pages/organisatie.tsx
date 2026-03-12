@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Department, User, AoProcedure, AoInstruction, LegislationLink, CaoDocument } from "@shared/schema";
+import type { Department, User, AoProcedure, AoInstruction, LegislationLink, CaoDocument, JobFunction } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { isAdminRole } from "@shared/schema";
 
@@ -391,6 +391,10 @@ function OrganogramTab() {
     queryKey: ["/api/users"],
   });
 
+  const { data: jobFunctionList } = useQuery<JobFunction[]>({
+    queryKey: ["/api/job-functions"],
+  });
+
   if (!departments || !users) {
     return <div className="space-y-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-20" />)}</div>;
   }
@@ -439,7 +443,13 @@ function OrganogramTab() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {departments.filter((d) => d.name !== "Directie" && d.name !== "Directie & Staf").map((dept) => {
           const manager = dept.managerId ? users.find((u) => u.id === dept.managerId) : null;
-          const members = users.filter((u) => u.department === dept.name && u.id !== dept.managerId);
+          const rawMembers = users.filter((u) => u.department === dept.name && u.id !== dept.managerId);
+          const getFuncSortOrder = (functie: string | null) => {
+            if (!functie || !jobFunctionList) return 9999;
+            const jf = jobFunctionList.find((f) => f.name === functie);
+            return jf?.sortOrder ?? 9999;
+          };
+          const members = [...rawMembers].sort((a, b) => getFuncSortOrder(a.functie ?? null) - getFuncSortOrder(b.functie ?? null));
           return (
             <Card key={dept.id}>
               <CardContent className="p-4">
@@ -458,14 +468,19 @@ function OrganogramTab() {
                     </div>
                   </div>
                 )}
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {members.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <span className="text-sm text-muted-foreground">{m.fullName}</span>
+                    <div key={m.id} className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0 mt-1" />
+                        <div>
+                          <span className="text-sm text-muted-foreground">{m.fullName}</span>
+                          {m.functie && (
+                            <p className="text-xs text-muted-foreground/70 leading-tight">{m.functie}</p>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-xs font-mono w-8 text-right text-muted-foreground">{m.phoneExtension || ""}</span>
+                      <span className="text-xs font-mono w-8 text-right text-muted-foreground shrink-0">{m.phoneExtension || ""}</span>
                     </div>
                   ))}
                   {members.length === 0 && !manager && (
