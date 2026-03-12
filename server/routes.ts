@@ -62,6 +62,34 @@ if (!fs.existsSync(beloningDir)) {
   fs.mkdirSync(beloningDir, { recursive: true });
 }
 
+const functiesDir = path.join(uploadsDir, "Functies");
+if (!fs.existsSync(functiesDir)) {
+  fs.mkdirSync(functiesDir, { recursive: true });
+}
+
+const functiesStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, functiesDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_"));
+  },
+});
+
+const uploadFunctie = multer({
+  storage: functiesStorage,
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["application/pdf", "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Alleen PDF, Word of tekstbestanden zijn toegestaan"));
+    }
+  },
+  limits: { fileSize: 20 * 1024 * 1024 },
+});
+
 const beloningStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, beloningDir),
   filename: (_req, file, cb) => {
@@ -196,6 +224,7 @@ export async function registerRoutes(
 
   app.use("/uploads/App_pics", express.default.static(appPicsDir));
   app.use("/uploads/Beloning", express.default.static(beloningDir));
+  app.use("/uploads/Functies", express.default.static(functiesDir));
 
   app.get("/uploads/public/:filename", (req, res) => {
     const filename = req.params.filename.replace(/[^a-zA-Z0-9._-]/g, "");
@@ -1153,6 +1182,19 @@ export async function registerRoutes(
     res.json(created);
   });
 
+  app.patch("/api/job-functions/bulk-sort-order", requireAuth, async (req, res) => {
+    const sessionUser = await storage.getUser((req.session as any).userId);
+    if (!sessionUser || !isAdminRole(sessionUser.role)) {
+      return res.status(403).json({ message: "Alleen admin/directeur" });
+    }
+    const { updates } = req.body as { updates: { id: string; sortOrder: number }[] };
+    if (!Array.isArray(updates)) return res.status(400).json({ message: "Ongeldige data" });
+    for (const { id, sortOrder } of updates) {
+      await storage.updateJobFunction(id, { sortOrder });
+    }
+    res.json({ success: true });
+  });
+
   app.patch("/api/job-functions/:id", requireAuth, async (req, res) => {
     const sessionUser = await storage.getUser((req.session as any).userId);
     if (!sessionUser || !isAdminRole(sessionUser.role)) {
@@ -1175,6 +1217,17 @@ export async function registerRoutes(
     }
     await storage.deleteJobFunction(req.params.id);
     res.json({ success: true });
+  });
+
+  app.post("/api/job-functions/:id/upload-description", requireAuth, uploadFunctie.single("file"), async (req: any, res) => {
+    const sessionUser = await storage.getUser((req.session as any).userId);
+    if (!sessionUser || !isAdminRole(sessionUser.role)) {
+      return res.status(403).json({ message: "Alleen admin/directeur" });
+    }
+    if (!req.file) return res.status(400).json({ message: "Geen bestand geüpload" });
+    const filePath = `/uploads/Functies/${req.file.filename}`;
+    const updated = await storage.updateJobFunction(req.params.id, { descriptionFilePath: filePath });
+    res.json(updated);
   });
 
   app.get("/api/functionering", requireAuth, async (req, res) => {

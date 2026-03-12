@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { PageHero } from "@/components/page-hero";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -26,6 +26,7 @@ import {
 import {
   Shield, Save, Users, Camera, ImageIcon, KeyRound,
   Building2, Briefcase, Plus, Trash2, Pencil,
+  FileText, Upload, ArrowUp, ArrowDown, ListOrdered, ExternalLink,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +57,6 @@ const jobFunctionFormSchema = z.object({
   name: z.string().min(1, "Naam is verplicht"),
   description: z.string().optional(),
   departmentId: z.string().optional(),
-  sortOrder: z.number().int().min(0).default(0),
 });
 
 // ─── Dialogs ─────────────────────────────────────────────────────────────────
@@ -512,6 +512,9 @@ function AfdelingenTab() {
 function FunctiesTab() {
   const [open, setOpen] = useState(false);
   const [editFunc, setEditFunc] = useState<JobFunction | null>(null);
+  const [showRang, setShowRang] = useState(false);
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const { data: jobFunctionList, isLoading } = useQuery<JobFunction[]>({ queryKey: ["/api/job-functions"] });
@@ -519,7 +522,7 @@ function FunctiesTab() {
 
   const form = useForm<z.infer<typeof jobFunctionFormSchema>>({
     resolver: zodResolver(jobFunctionFormSchema),
-    defaultValues: { name: "", description: "", departmentId: "", sortOrder: 0 },
+    defaultValues: { name: "", description: "", departmentId: "" },
   });
 
   const createMutation = useMutation({
@@ -527,14 +530,14 @@ function FunctiesTab() {
       await apiRequest("POST", "/api/job-functions", {
         name: data.name,
         description: data.description || null,
-        departmentId: data.departmentId || null,
-        sortOrder: data.sortOrder ?? 0,
+        departmentId: data.departmentId && data.departmentId !== "none" ? data.departmentId : null,
+        sortOrder: 0,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/job-functions"] });
       toast({ title: "Functie aangemaakt" });
-      setOpen(false); form.reset({ name: "", description: "", departmentId: "", sortOrder: 0 });
+      setOpen(false); form.reset({ name: "", description: "", departmentId: "" });
     },
     onError: () => { toast({ title: "Fout bij aanmaken", variant: "destructive" }); },
   });
@@ -549,7 +552,7 @@ function FunctiesTab() {
 
   const editForm = useForm<z.infer<typeof jobFunctionFormSchema>>({
     resolver: zodResolver(jobFunctionFormSchema),
-    defaultValues: { name: "", description: "", departmentId: "", sortOrder: 0 },
+    defaultValues: { name: "", description: "", departmentId: "" },
   });
 
   const editMutation = useMutation({
@@ -557,8 +560,7 @@ function FunctiesTab() {
       await apiRequest("PATCH", `/api/job-functions/${data.id}`, {
         name: data.name,
         description: data.description || null,
-        departmentId: data.departmentId || null,
-        sortOrder: data.sortOrder ?? 0,
+        departmentId: data.departmentId && data.departmentId !== "none" ? data.departmentId : null,
       });
     },
     onSuccess: () => {
@@ -569,12 +571,32 @@ function FunctiesTab() {
     onError: () => { toast({ title: "Fout bij bijwerken", variant: "destructive" }); },
   });
 
+  const uploadDescriptionMutation = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/job-functions/${id}/upload-description`, { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) throw new Error("Upload mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-functions"] });
+      toast({ title: "Omschrijving geüpload" });
+      setUploadingFor(null);
+    },
+    onError: () => { toast({ title: "Upload mislukt", variant: "destructive" }); setUploadingFor(null); },
+  });
+
+  const handleFileSelect = useCallback((funcId: string, file: File) => {
+    setUploadingFor(funcId);
+    uploadDescriptionMutation.mutate({ id: funcId, file });
+  }, [uploadDescriptionMutation]);
+
   const openEdit = (func: JobFunction) => {
     editForm.reset({
       name: func.name,
       description: func.description || "",
       departmentId: func.departmentId || "",
-      sortOrder: func.sortOrder ?? 0,
     });
     setEditFunc(func);
   };
@@ -583,6 +605,8 @@ function FunctiesTab() {
     if (!deptId) return null;
     return departments?.find((d) => d.id === deptId)?.name ?? null;
   };
+
+  const existingNames = [...new Set(jobFunctionList?.map((f) => f.name) ?? [])];
 
   const grouped = (() => {
     if (!jobFunctionList) return [];
@@ -595,7 +619,7 @@ function FunctiesTab() {
     const result: { deptId: string | null; deptName: string; funcs: JobFunction[] }[] = [];
     map.forEach((funcs, deptId) => {
       const deptName = deptId ? (getDeptName(deptId) ?? "Onbekende Afdeling") : "Geen Afdeling";
-      result.push({ deptId, deptName, funcs });
+      result.push({ deptId, deptName, funcs: [...funcs].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)) });
     });
     result.sort((a, b) => {
       if (a.deptId === null) return 1;
@@ -605,15 +629,8 @@ function FunctiesTab() {
     return result;
   })();
 
-  const functionFormFields = (control: any, testPrefix: string) => (
+  const functionFormContent = (control: any, testPrefix: string) => (
     <>
-      <FormField control={control} name="name" render={({ field }) => (
-        <FormItem>
-          <FormLabel>Naam</FormLabel>
-          <FormControl><Input {...field} placeholder="Bijv. HR Medewerker" data-testid={`${testPrefix}-name`} /></FormControl>
-          <FormMessage />
-        </FormItem>
-      )} />
       <FormField control={control} name="departmentId" render={({ field }) => (
         <FormItem>
           <FormLabel>Afdeling</FormLabel>
@@ -631,27 +648,27 @@ function FunctiesTab() {
           <FormMessage />
         </FormItem>
       )} />
-      <FormField control={control} name="sortOrder" render={({ field }) => (
+      <FormField control={control} name="name" render={({ field }) => (
         <FormItem>
-          <FormLabel>Rangorde (in organogram)</FormLabel>
+          <FormLabel>Naam</FormLabel>
           <FormControl>
             <Input
-              type="number"
-              min={0}
               {...field}
-              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-              placeholder="0 = hoogste rang"
-              data-testid={`${testPrefix}-sort`}
+              list="functies-datalist"
+              placeholder="Kies bestaande functie of typ nieuwe naam"
+              data-testid={`${testPrefix}-name`}
             />
           </FormControl>
-          <p className="text-xs text-muted-foreground">Lagere waarde = hoger in het organogram</p>
+          <datalist id="functies-datalist">
+            {existingNames.map((n) => <option key={n} value={n} />)}
+          </datalist>
           <FormMessage />
         </FormItem>
       )} />
       <FormField control={control} name="description" render={({ field }) => (
         <FormItem>
-          <FormLabel>Beschrijving (optioneel)</FormLabel>
-          <FormControl><Textarea {...field} data-testid={`${testPrefix}-desc`} /></FormControl>
+          <FormLabel>Omschrijving (optioneel)</FormLabel>
+          <FormControl><Textarea {...field} rows={3} placeholder="Beschrijf de functie..." data-testid={`${testPrefix}-desc`} /></FormControl>
           <FormMessage />
         </FormItem>
       )} />
@@ -668,29 +685,34 @@ function FunctiesTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-muted-foreground max-w-xl">
-          Functies per afdeling bepalen de keuzelijst bij het aanmaken van medewerkers in Personalia.
-          De rangorde bepaalt de volgorde van medewerkers binnen een afdeling in het Organogram.
+          Beheer functies per afdeling. Functies zijn beschikbaar als keuzelijst in Personalia.
+          Upload een omschrijvingsdocument per functie en gebruik <strong>Rang</strong> om de volgorde in het Organogram in te stellen.
         </p>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="shrink-0" data-testid="button-add-job-function">
-              <Plus className="h-4 w-4 mr-2" />Nieuwe Functie
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nieuwe Functie</DialogTitle></DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit((d) => createMutation.mutate({ ...d, departmentId: d.departmentId === "none" ? "" : d.departmentId }))} className="space-y-4">
-                {functionFormFields(form.control, "input-job-function")}
-                <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-job-function">
-                  {createMutation.isPending ? "Opslaan..." : "Functie Opslaan"}
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" onClick={() => setShowRang(true)} data-testid="button-rang">
+            <ListOrdered className="h-4 w-4 mr-2" />Rang
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-job-function">
+                <Plus className="h-4 w-4 mr-2" />Functie Toevoegen
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Onderhoud Functies – Toevoegen</DialogTitle></DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((d) => createMutation.mutate(d))} className="space-y-4">
+                  {functionFormContent(form.control, "input-job-function")}
+                  <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-job-function">
+                    {createMutation.isPending ? "Opslaan..." : "Functie Opslaan"}
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {grouped.length === 0 ? (
@@ -698,7 +720,7 @@ function FunctiesTab() {
           <CardContent className="flex flex-col items-center py-12">
             <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">Geen functies gevonden</p>
-            <p className="text-sm text-muted-foreground mt-1">Voeg functies toe om ze beschikbaar te maken in medewerkersprofielen.</p>
+            <p className="text-sm text-muted-foreground mt-1">Klik op "Functie Toevoegen" om te beginnen.</p>
           </CardContent>
         </Card>
       ) : (
@@ -721,10 +743,18 @@ function FunctiesTab() {
                           </div>
                           <div>
                             <p className="font-semibold text-sm" data-testid={`text-job-function-${func.id}`}>{func.name}</p>
-                            <p className="text-xs text-muted-foreground">Rang {func.sortOrder}</p>
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7"
+                            title="Omschrijving uploaden"
+                            onClick={() => { setUploadingFor(func.id); fileInputRef.current?.click(); }}
+                            disabled={uploadingFor === func.id}
+                            data-testid={`button-upload-func-${func.id}`}
+                          >
+                            <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(func)} data-testid={`button-edit-job-function-${func.id}`}>
                             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
@@ -736,6 +766,19 @@ function FunctiesTab() {
                       {func.description && (
                         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{func.description}</p>
                       )}
+                      {func.descriptionFilePath && (
+                        <a
+                          href={func.descriptionFilePath}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-primary mt-2 hover:underline"
+                          data-testid={`link-func-desc-${func.id}`}
+                        >
+                          <FileText className="h-3 w-3" />
+                          Omschrijving bekijken
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -745,13 +788,25 @@ function FunctiesTab() {
         </div>
       )}
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.txt"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && uploadingFor) handleFileSelect(uploadingFor, file);
+          e.target.value = "";
+        }}
+        data-testid="input-func-desc-file"
+      />
+
       <Dialog open={!!editFunc} onOpenChange={(v) => { if (!v) setEditFunc(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Functie Bewerken</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Onderhoud Functies – Bewerken</DialogTitle></DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((d) => editFunc && editMutation.mutate({ ...d, id: editFunc.id, departmentId: d.departmentId === "none" ? "" : d.departmentId }))} className="space-y-4">
-              {functionFormFields(editForm.control, "input-edit-job-function")}
-              
+            <form onSubmit={editForm.handleSubmit((d) => editFunc && editMutation.mutate({ ...d, id: editFunc.id }))} className="space-y-4">
+              {functionFormContent(editForm.control, "input-edit-job-function")}
               <Button type="submit" className="w-full" disabled={editMutation.isPending} data-testid="button-submit-edit-job-function">
                 {editMutation.isPending ? "Opslaan..." : "Wijzigingen Opslaan"}
               </Button>
@@ -759,7 +814,141 @@ function FunctiesTab() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <RangDialog
+        open={showRang}
+        onOpenChange={setShowRang}
+        departments={departments}
+        jobFunctionList={jobFunctionList}
+      />
     </div>
+  );
+}
+
+// ─── Rang Dialog ──────────────────────────────────────────────────────────────
+
+function RangDialog({
+  open,
+  onOpenChange,
+  departments,
+  jobFunctionList,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  departments: Department[] | undefined;
+  jobFunctionList: JobFunction[] | undefined;
+}) {
+  const [selectedDeptId, setSelectedDeptId] = useState<string>("");
+  const [localOrder, setLocalOrder] = useState<JobFunction[]>([]);
+  const { toast } = useToast();
+  const { data: users } = useQuery<SafeUser[]>({ queryKey: ["/api/users"] });
+
+  const deptFunctions = jobFunctionList?.filter((f) => f.departmentId === (selectedDeptId || null)) ?? [];
+
+  useEffect(() => {
+    setLocalOrder([...deptFunctions].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
+  }, [selectedDeptId, jobFunctionList]);
+
+  const move = (index: number, direction: -1 | 1) => {
+    const next = [...localOrder];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setLocalOrder(next);
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const updates = localOrder.map((f, i) => ({ id: f.id, sortOrder: i }));
+      await apiRequest("PATCH", "/api/job-functions/bulk-sort-order", { updates });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-functions"] });
+      toast({ title: "Rangvolgorde opgeslagen" });
+      onOpenChange(false);
+    },
+    onError: () => { toast({ title: "Fout bij opslaan", variant: "destructive" }); },
+  });
+
+  const activeUsers = users?.filter((u) => u.active !== false) ?? [];
+  const getUsersForFunc = (funcName: string) =>
+    activeUsers.filter((u) => u.department === (departments?.find((d) => d.id === selectedDeptId)?.name) && u.functie === funcName);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ListOrdered className="h-5 w-5" />
+            Rangvolgorde instellen
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">Afdeling</label>
+            <Select value={selectedDeptId} onValueChange={setSelectedDeptId}>
+              <SelectTrigger data-testid="select-rang-dept"><SelectValue placeholder="Selecteer afdeling" /></SelectTrigger>
+              <SelectContent>
+                {departments?.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedDeptId && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">
+                Gebruik de pijlen om de volgorde van functies (en het personeel) in het Organogram aan te passen.
+              </p>
+              {localOrder.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic text-center py-4">Geen functies voor deze afdeling</p>
+              ) : (
+                <div className="space-y-1">
+                  {localOrder.map((func, i) => {
+                    const funcUsers = getUsersForFunc(func.name);
+                    return (
+                      <div key={func.id} className="flex items-center gap-2 p-2 rounded-md border bg-muted/30" data-testid={`rang-row-${func.id}`}>
+                        <span className="text-xs text-muted-foreground w-5 text-center font-mono">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{func.name}</p>
+                          {funcUsers.length > 0 && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {funcUsers.map((u) => u.fullName).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-0.5 shrink-0">
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => move(i, -1)} disabled={i === 0} data-testid={`button-rang-up-${func.id}`}>
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => move(i, 1)} disabled={i === localOrder.length - 1} data-testid={`button-rang-down-${func.id}`}>
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Annuleren</Button>
+            <Button
+              className="flex-1"
+              onClick={() => saveMutation.mutate()}
+              disabled={!selectedDeptId || saveMutation.isPending}
+              data-testid="button-save-rang"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saveMutation.isPending ? "Opslaan..." : "Rangvolgorde Opslaan"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

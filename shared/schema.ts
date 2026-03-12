@@ -377,6 +377,7 @@ export const jobFunctions = pgTable("job_functions", {
   description: text("description"),
   departmentId: varchar("department_id").references(() => departments.id, { onDelete: "set null" }),
   sortOrder: integer("sort_order").notNull().default(0),
+  descriptionFilePath: text("description_file_path"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
