@@ -452,11 +452,21 @@ function OrganogramTab() {
               ?? jobFunctionList.find((f) => f.name === functie);
             return jf?.sortOrder ?? 9999;
           };
-          const members = [...rawMembers].sort((a, b) => {
+          const isManagerFunctie = (functie: string | null) =>
+            !!functie && /manager/i.test(functie);
+
+          const sortedMembers = [...rawMembers].sort((a, b) => {
             const orderDiff = getFuncSortOrder(a.functie ?? null) - getFuncSortOrder(b.functie ?? null);
             if (orderDiff !== 0) return orderDiff;
             return (a.fullName ?? "").localeCompare(b.fullName ?? "", "nl");
           });
+
+          const managerMembers = sortedMembers.filter((m) => isManagerFunctie(m.functie ?? null));
+          const regularMembers = sortedMembers.filter((m) => !isManagerFunctie(m.functie ?? null));
+
+          const hasManagerBlock = !!manager || managerMembers.length > 0;
+          const hasRegularBlock = regularMembers.length > 0;
+
           return (
             <Card key={dept.id}>
               <CardContent className="p-4">
@@ -466,17 +476,32 @@ function OrganogramTab() {
                   </div>
                   <h4 className="font-semibold text-sm" data-testid={`text-organogram-dept-${dept.id}`}>{dept.name}</h4>
                 </div>
-                {manager && (
-                  <div className="mb-2 pb-2 border-b">
-                    <p className="text-xs text-muted-foreground">Manager</p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{manager.fullName}</p>
-                      <span className="text-xs font-mono w-8 text-right text-muted-foreground">{manager.phoneExtension || ""}</span>
-                    </div>
+
+                {hasManagerBlock && (
+                  <div className={`space-y-1 ${hasRegularBlock ? "mb-2 pb-2 border-b" : ""}`}>
+                    {manager && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Manager</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{manager.fullName}</p>
+                          <span className="text-xs font-mono w-8 text-right text-muted-foreground">{manager.phoneExtension || ""}</span>
+                        </div>
+                      </div>
+                    )}
+                    {managerMembers.map((m) => (
+                      <div key={m.id}>
+                        <p className="text-xs text-muted-foreground">{m.functie}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{m.fullName}</p>
+                          <span className="text-xs font-mono w-8 text-right text-muted-foreground">{m.phoneExtension || ""}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
+
                 <div className="space-y-1.5">
-                  {members.map((m) => (
+                  {regularMembers.map((m) => (
                     <div key={m.id} className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2">
                         <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0 mt-1" />
@@ -490,7 +515,7 @@ function OrganogramTab() {
                       <span className="text-xs font-mono w-8 text-right text-muted-foreground shrink-0">{m.phoneExtension || ""}</span>
                     </div>
                   ))}
-                  {members.length === 0 && !manager && (
+                  {!hasManagerBlock && !hasRegularBlock && (
                     <p className="text-xs text-muted-foreground italic">Geen medewerkers</p>
                   )}
                 </div>
