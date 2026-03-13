@@ -2621,7 +2621,7 @@ export default function BeloningenPage() {
                       {deptAwards.map((award) => (
                         <div key={award.id} className="p-3 rounded-md border space-y-3" data-testid={`dept-award-${award.id}`}>
                           {award.photo && (
-                            <img src={award.photo} alt={award.name} className="w-full h-40 object-cover rounded-md" />
+                            <img src={award.photo} alt={award.name} className="w-full h-auto object-contain rounded-md" />
                           )}
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
@@ -2659,7 +2659,7 @@ export default function BeloningenPage() {
                       {mgrAwards.map((award) => (
                         <div key={award.id} className="p-3 rounded-md border space-y-3" data-testid={`mgr-award-${award.id}`}>
                           {award.photo && (
-                            <img src={award.photo} alt={award.name} className="w-full h-40 object-cover rounded-md" />
+                            <img src={award.photo} alt={award.name} className="w-full h-auto object-contain rounded-md" />
                           )}
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
