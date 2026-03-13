@@ -985,6 +985,101 @@ function WetgevingTab() {
   );
 }
 
+function FunctieBeschrijvingTab() {
+  const { user } = useAuth();
+
+  const { data: jobFunctionList, isLoading: loadingFunctions } = useQuery<JobFunction[]>({
+    queryKey: ["/api/job-functions"],
+  });
+
+  const { data: departments, isLoading: loadingDepts } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
+  });
+
+  if (loadingFunctions || loadingDepts) {
+    return <div className="space-y-4">{[1, 2].map((i) => <Skeleton key={i} className="h-16" />)}</div>;
+  }
+
+  const userFunctie = user?.functie;
+
+  if (!userFunctie) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center py-12">
+          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground text-center">Er is geen functie gekoppeld aan uw profiel.</p>
+          <p className="text-sm text-muted-foreground text-center mt-1">Vraag uw beheerder om uw functie in te stellen in Personalia.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const userDeptId = departments?.find((d) => d.name === user?.department)?.id ?? null;
+
+  const matchedFunction = jobFunctionList?.find(
+    (jf) => jf.name === userFunctie && jf.departmentId === userDeptId
+  ) ?? jobFunctionList?.find((jf) => jf.name === userFunctie) ?? null;
+
+  if (!matchedFunction) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center py-12">
+          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground text-center">Geen functiebeschrijving gevonden voor <strong>{userFunctie}</strong>.</p>
+          <p className="text-sm text-muted-foreground text-center mt-1">Vraag uw beheerder om een functiebeschrijving te uploaden in Beheer → Onderhoud Functies.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!matchedFunction.descriptionFilePath) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center py-12">
+          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground text-center">Geen document geüpload voor <strong>{userFunctie}</strong>.</p>
+          <p className="text-sm text-muted-foreground text-center mt-1">Vraag uw beheerder om een functiebeschrijving te uploaden in Beheer → Onderhoud Functies.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              {userFunctie}
+            </CardTitle>
+            <a
+              href={matchedFunction.descriptionFilePath}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="link-open-functie-beschrijving"
+            >
+              <Button variant="outline" size="sm" className="gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Openen in nieuw tabblad
+              </Button>
+            </a>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <iframe
+            src={matchedFunction.descriptionFilePath}
+            className="w-full rounded-md border"
+            style={{ height: "75vh", minHeight: "400px" }}
+            title={`Functiebeschrijving ${userFunctie}`}
+            data-testid="iframe-functie-beschrijving"
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function OrganisatiePage() {
   const { user } = useAuth();
   const isAdmin = isAdminRole(user?.role);
@@ -996,6 +1091,7 @@ export default function OrganisatiePage() {
     { key: "instructies", label: "Instructies", icon: FolderOpen },
     { key: "cao", label: "CAO Info", icon: BookOpen },
     { key: "wetgeving", label: "Wetgeving", icon: Scale },
+    { key: "functie-beschrijving", label: "Functie beschrijving", icon: FileText },
   ];
 
   return (
@@ -1035,6 +1131,7 @@ export default function OrganisatiePage() {
         {activeTab === "instructies" && <InstructiesTab />}
         {activeTab === "cao" && <CaoInfoTab />}
         {activeTab === "wetgeving" && <WetgevingTab />}
+        {activeTab === "functie-beschrijving" && <FunctieBeschrijvingTab />}
       </div>
       </div>
     </div>
