@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -74,6 +74,191 @@ type VacationBalance = {
   sickDays: number;
   snipperdagen?: number;
 };
+
+function IrregularCalendarDialog({
+  open,
+  onOpenChange,
+  startDate,
+  endDate,
+  absenceType,
+  userId,
+  onSubmitSuccess,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  startDate: string;
+  endDate: string;
+  absenceType: string;
+  userId: string;
+  onSubmitSuccess: () => void;
+}) {
+  const { toast } = useToast();
+
+  const workdays = useMemo(() => {
+    if (!startDate || !endDate || startDate > endDate) return [];
+    const days: string[] = [];
+    const cur = new Date(startDate + "T00:00:00");
+    const end = new Date(endDate + "T00:00:00");
+    while (cur <= end) {
+      const day = cur.getDay();
+      if (day !== 0 && day !== 6) days.push(format(cur, "yyyy-MM-dd"));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return days;
+  }, [startDate, endDate]);
+
+  const [selections, setSelections] = useState<Record<string, "none" | "am" | "pm" | "full">>({});
+
+  useEffect(() => {
+    if (open) {
+      const init: Record<string, "none" | "am" | "pm" | "full"> = {};
+      for (const d of workdays) init[d] = "full";
+      setSelections(init);
+    }
+  }, [open, workdays]);
+
+  const weeks = useMemo(() => {
+    const result: string[][] = [];
+    let current: string[] = [];
+    for (const dateStr of workdays) {
+      const d = new Date(dateStr + "T00:00:00");
+      if (current.length > 0 && d.getDay() === 1) {
+        result.push(current);
+        current = [];
+      }
+      current.push(dateStr);
+    }
+    if (current.length > 0) result.push(current);
+    return result;
+  }, [workdays]);
+
+  const total = useMemo(
+    () => Object.values(selections).reduce((sum, v) => sum + (v === "full" ? 1 : v === "am" || v === "pm" ? 0.5 : 0), 0),
+    [selections]
+  );
+
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      const selected = workdays.filter(d => selections[d] !== "none");
+      for (const dateStr of selected) {
+        const sel = selections[dateStr];
+        await apiRequest("POST", "/api/absences", {
+          userId,
+          type: absenceType,
+          startDate: dateStr,
+          endDate: dateStr,
+          halfDay: sel === "full" ? null : sel,
+          status: "pending",
+          reason: "Onregelmatig verlof",
+          bvvdReason: null,
+          approvedBy: null,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/absences"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vacation-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: `${total} dag(en) ingediend` });
+      onOpenChange(false);
+      onSubmitSuccess();
+    },
+    onError: () => {
+      toast({ title: "Fout bij indienen", variant: "destructive" });
+    },
+  });
+
+  const DAYS = ["ma", "di", "wo", "do", "vr"];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5" />
+            Onregelmatig verlof plannen
+          </DialogTitle>
+        </DialogHeader>
+
+        {workdays.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Vul een geldige periode in het verzoekformulier in.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Selecteer per werkdag of u de ochtend (AM), middag (PM), hele dag of geen dag wilt aanvragen.
+            </p>
+
+            <div className="space-y-2">
+              <div className="grid grid-cols-5 gap-1 px-1">
+                {DAYS.map(d => (
+                  <div key={d} className="text-xs font-medium text-center text-muted-foreground uppercase tracking-wide">{d}</div>
+                ))}
+              </div>
+
+              {weeks.map((week, wi) => (
+                <div key={wi} className="grid grid-cols-5 gap-1">
+                  {[1, 2, 3, 4, 5].map(dayOfWeek => {
+                    const dateStr = week.find(s => new Date(s + "T00:00:00").getDay() === dayOfWeek);
+                    if (!dateStr) {
+                      return <div key={dayOfWeek} className="rounded-md bg-muted/20 h-24" />;
+                    }
+                    const sel = selections[dateStr] || "full";
+                    const dateObj = new Date(dateStr + "T00:00:00");
+                    return (
+                      <div key={dayOfWeek} className="rounded-md border p-2 space-y-1.5">
+                        <div className="text-xs font-semibold text-center">
+                          {format(dateObj, "d MMM", { locale: nl })}
+                        </div>
+                        <div className="grid grid-cols-2 gap-0.5">
+                          {(["am", "pm", "full", "none"] as const).map(opt => (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => setSelections(prev => ({ ...prev, [dateStr]: opt }))}
+                              className={`text-xs py-1 rounded transition-colors font-medium ${
+                                sel === opt
+                                  ? opt === "none"
+                                    ? "bg-muted text-muted-foreground ring-1 ring-border"
+                                    : opt === "full"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-blue-500 text-white"
+                                  : "bg-muted/40 hover:bg-muted text-muted-foreground"
+                              }`}
+                              data-testid={`btn-day-${dateStr}-${opt}`}
+                            >
+                              {opt === "am" ? "AM" : opt === "pm" ? "PM" : opt === "full" ? "Dag" : "—"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t">
+              <p className="text-sm font-medium">
+                Totaal:{" "}
+                <span className="text-primary font-semibold">{total}</span>{" "}
+                dag{total !== 1 ? "en" : ""} aangevraagd
+              </p>
+              <Button
+                onClick={() => submitMutation.mutate()}
+                disabled={submitMutation.isPending || total === 0}
+                data-testid="button-submit-irregular"
+              >
+                {submitMutation.isPending ? "Indienen..." : "Indienen"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function AbsenceReportDialog({
   open,
@@ -313,6 +498,7 @@ function AbsenceReportDialog({
 
 export default function VerzuimPage() {
   const [open, setOpen] = useState(false);
+  const [irregularOpen, setIrregularOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [snipperdagOpen, setSnipperdagOpen] = useState(false);
   const [snipperdagName, setSnipperdagName] = useState("");
@@ -348,6 +534,8 @@ export default function VerzuimPage() {
   });
 
   const watchType = form.watch("type");
+  const watchStartDate = form.watch("startDate");
+  const watchEndDate = form.watch("endDate");
   const [dateFocused, setDateFocused] = useState(false);
   const [activeTab, setActiveTab] = useState("meldingen");
 
@@ -736,13 +924,47 @@ export default function VerzuimPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-absence">
-                    {createMutation.isPending ? "Indienen..." : "Verzoek Indienen"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 gap-2"
+                      onClick={() => {
+                        const sd = form.getValues("startDate");
+                        const ed = form.getValues("endDate");
+                        if (!sd || !ed) {
+                          toast({ title: "Vul eerst een start- en einddatum in", variant: "destructive" });
+                          return;
+                        }
+                        if (sd > ed) {
+                          toast({ title: "Startdatum moet voor de einddatum liggen", variant: "destructive" });
+                          return;
+                        }
+                        setIrregularOpen(true);
+                      }}
+                      data-testid="button-irregular"
+                    >
+                      <CalendarDays className="h-4 w-4" />
+                      Onregelmatig
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={createMutation.isPending} data-testid="button-submit-absence">
+                      {createMutation.isPending ? "Indienen..." : "Verzoek Indienen"}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </DialogContent>
           </Dialog>
+
+          <IrregularCalendarDialog
+            open={irregularOpen}
+            onOpenChange={setIrregularOpen}
+            startDate={watchStartDate}
+            endDate={watchEndDate}
+            absenceType={watchType}
+            userId={user?.id || ""}
+            onSubmitSuccess={() => { setOpen(false); form.reset(); }}
+          />
         </div>
       </div>
 
