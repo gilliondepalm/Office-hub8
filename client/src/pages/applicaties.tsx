@@ -36,7 +36,6 @@ const appFormSchema = z.object({
   name: z.string().min(1, "Naam is verplicht"),
   description: z.string().optional(),
   url: z.string().optional(),
-  path: z.string().optional(),
 });
 
 const accessFormSchema = z.object({
@@ -66,7 +65,7 @@ export default function ApplicatiesPage() {
 
   const appForm = useForm<z.infer<typeof appFormSchema>>({
     resolver: zodResolver(appFormSchema),
-    defaultValues: { name: "", description: "", url: "", path: "" },
+    defaultValues: { name: "", description: "", url: "" },
   });
 
   const accessForm = useForm<z.infer<typeof accessFormSchema>>({
@@ -80,7 +79,6 @@ export default function ApplicatiesPage() {
         ...data,
         description: data.description || null,
         url: data.url || null,
-        path: data.path || null,
         icon: null,
       });
     },
@@ -237,13 +235,6 @@ export default function ApplicatiesPage() {
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={appForm.control} name="path" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Netwerkpad</FormLabel>
-                        <FormControl><Input {...field} placeholder="Bijv. \\server\apps\programma.exe" data-testid="input-app-path" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
                     <FormField control={appForm.control} name="url" render={({ field }) => (
                       <FormItem>
                         <FormLabel>URL (optioneel)</FormLabel>
@@ -303,7 +294,6 @@ export default function ApplicatiesPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Applicatie</TableHead>
-                            <TableHead>Netwerkpad</TableHead>
                             <TableHead>URL</TableHead>
                             <TableHead className="w-12"></TableHead>
                           </TableRow>
@@ -312,9 +302,6 @@ export default function ApplicatiesPage() {
                           {apps.map(app => (
                             <TableRow key={app.accessId} data-testid={`row-user-app-${app.accessId}`}>
                               <TableCell className="font-medium text-sm">{app.name}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground font-mono">
-                                {app.path || "-"}
-                              </TableCell>
                               <TableCell className="text-sm">
                                 {app.url ? (
                                   <a href={app.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1" data-testid={`link-app-url-${app.id}`}>
@@ -355,7 +342,6 @@ export default function ApplicatiesPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Naam</TableHead>
-                          <TableHead>Netwerkpad</TableHead>
                           <TableHead>URL</TableHead>
                           <TableHead>Icon</TableHead>
                           <TableHead>Gebruikers</TableHead>
@@ -368,7 +354,6 @@ export default function ApplicatiesPage() {
                           return (
                             <TableRow key={app.id} data-testid={`row-app-${app.id}`}>
                               <TableCell className="font-medium text-sm">{app.name}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground font-mono">{app.path || "-"}</TableCell>
                               <TableCell className="text-sm">
                                 {app.url ? (
                                   <a href={app.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
@@ -417,9 +402,6 @@ export default function ApplicatiesPage() {
                   onClick={() => {
                     if (app.url) {
                       window.open(app.url, "_blank", "noopener,noreferrer");
-                    } else if (app.path) {
-                      navigator.clipboard.writeText(app.path);
-                      toast({ title: "Pad gekopieerd", description: "Open Windows Verkenner (Win+E) en plak het pad (Ctrl+V) in de adresbalk om het programma te starten.", duration: 8000 });
                     }
                   }}
                 >
