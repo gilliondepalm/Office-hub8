@@ -2453,7 +2453,7 @@ export default function BeloningenPage() {
       <PageHero
         title="Beloningen"
         subtitle="Functionering, beoordeling en beloning"
-        imageSrc="/uploads/App_pics/beloningen.png"
+        imageSrc="/uploads/app_pics/beloningen.png"
         imageAlt="beloningen"
       />
       <div className="p-6 space-y-4">

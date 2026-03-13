@@ -873,7 +873,7 @@ export default function KalenderPage() {
       <PageHero
         title="Evenementen Kalender"
         subtitle="Beheer en bekijk alle evenementen en afspraken"
-        imageSrc="/uploads/App_pics/kalender.png"
+        imageSrc="/uploads/app_pics/kalender.png"
         imageAlt="kalender"
       />
       <div className="p-6 space-y-4">

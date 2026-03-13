@@ -47,7 +47,7 @@ A comprehensive office dashboard application with 9 modules and granular permiss
 
 ## Page Hero Banners
 - `client/src/components/page-hero.tsx` - Reusable PageHero component (title, subtitle, background image)
-- Hero images stored at `uploads/App_pics/` (served statically, unauthenticated)
+- Hero images stored at `uploads/app_pics/` (served statically, unauthenticated; `uploads/App_pics` is a symlink for backward compat)
 - All 9 module pages + profiel use PageHero: dashboard, login, kalender, aankondigingen, organisatie, personalia, verzuim, beloningen, applicaties, beheer, profiel
 - Page structure: outer `div.overflow-auto.h-full` → `<PageHero />` → inner `div.p-6.space-y-*` (content)
 

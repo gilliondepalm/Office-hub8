@@ -675,7 +675,7 @@ export default function AankondigingenPage() {
       <PageHero
         title="Aankondigingen"
         subtitle="Belangrijke mededelingen en berichten"
-        imageSrc="/uploads/App_pics/aankondigingen.png"
+        imageSrc="/uploads/app_pics/aankondigingen.png"
         imageAlt="aankondigingen"
       />
       <div className="p-6 space-y-6">

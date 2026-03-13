@@ -110,7 +110,7 @@ const uploadBeloning = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-const appPicsDir = path.join(uploadsDir, "App_pics");
+const appPicsDir = path.join(uploadsDir, "app_pics");
 if (!fs.existsSync(appPicsDir)) {
   fs.mkdirSync(appPicsDir, { recursive: true });
 }
@@ -222,6 +222,7 @@ export async function registerRoutes(
 
   app.use("/PDF", express.default.static(path.join(process.cwd(), "PDF")));
 
+  app.use("/uploads/app_pics", express.default.static(appPicsDir));
   app.use("/uploads/App_pics", express.default.static(appPicsDir));
   app.use("/uploads/Beloning", express.default.static(beloningDir));
   app.use("/uploads/Functies", express.default.static(functiesDir));
@@ -1764,7 +1765,7 @@ export async function registerRoutes(
       if (!req.file) {
         return res.status(400).json({ message: "Geen afbeelding geüpload" });
       }
-      const photoUrl = `/uploads/App_pics/${req.file.filename}`;
+      const photoUrl = `/uploads/app_pics/${req.file.filename}`;
       await storage.setSiteSetting("dashboard_photo", photoUrl);
       res.json({ value: photoUrl });
     } catch (err: any) {
@@ -1782,7 +1783,7 @@ export async function registerRoutes(
       if (!req.file) {
         return res.status(400).json({ message: "Geen afbeelding geüpload" });
       }
-      const photoUrl = `/uploads/App_pics/${req.file.filename}`;
+      const photoUrl = `/uploads/app_pics/${req.file.filename}`;
       await storage.setSiteSetting("login_photo", photoUrl);
       res.json({ value: photoUrl });
     } catch (err: any) {
