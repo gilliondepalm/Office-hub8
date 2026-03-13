@@ -137,6 +137,19 @@ function IrregularCalendarDialog({
     [selections]
   );
 
+  const summary = useMemo(() => {
+    const selected = workdays.filter(d => selections[d] && selections[d] !== "none");
+    if (selected.length === 0) return "";
+    const lines = selected.map(dateStr => {
+      const d = new Date(dateStr + "T00:00:00");
+      const dayLabel = format(d, "EEEE d MMM", { locale: nl });
+      const sel = selections[dateStr];
+      const partLabel = sel === "am" ? "Ochtend (AM)" : sel === "pm" ? "Middag (PM)" : "Hele dag";
+      return `${dayLabel}: ${partLabel}`;
+    });
+    return `Onregelmatig verlof (${total} dag${total !== 1 ? "en" : ""}):\n${lines.join("\n")}`;
+  }, [workdays, selections, total]);
+
   const submitMutation = useMutation({
     mutationFn: async () => {
       const selected = workdays.filter(d => selections[d] !== "none");
@@ -149,7 +162,7 @@ function IrregularCalendarDialog({
           endDate: dateStr,
           halfDay: sel === "full" ? null : sel,
           status: "pending",
-          reason: "Onregelmatig verlof",
+          reason: summary,
           bvvdReason: null,
           approvedBy: null,
         });
@@ -238,6 +251,19 @@ function IrregularCalendarDialog({
                 </div>
               ))}
             </div>
+
+            {summary && (
+              <div className="pt-3 border-t space-y-1.5">
+                <p className="text-sm font-medium text-muted-foreground">Toelichting</p>
+                <textarea
+                  readOnly
+                  value={summary}
+                  rows={Math.min(summary.split("\n").length + 1, 8)}
+                  className="w-full rounded-md border border-input bg-muted/40 px-3 py-2 text-sm font-mono leading-relaxed resize-none focus:outline-none"
+                  data-testid="text-irregular-summary"
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-between pt-3 border-t">
               <p className="text-sm font-medium">
