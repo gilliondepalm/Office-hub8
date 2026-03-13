@@ -221,7 +221,7 @@ function EditDialog({
             <FormField control={form.control} name="phoneExtension" render={({ field }) => (
               <FormItem>
                 <FormLabel>Toestelnummer</FormLabel>
-                <FormControl><Input {...field} placeholder="bijv. 101" data-testid="input-edit-phone-extension" /></FormControl>
+                <FormControl><Input {...field} placeholder="bijv. 1011" data-testid="input-edit-phone-extension" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
@@ -1143,7 +1143,7 @@ export default function PersonaliaPage() {
                   <FormField control={createForm.control} name="phoneExtension" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Toestelnummer</FormLabel>
-                      <FormControl><Input {...field} placeholder="bijv. 101" data-testid="input-user-phone-extension" /></FormControl>
+                      <FormControl><Input {...field} placeholder="bijv. 1011" data-testid="input-user-phone-extension" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

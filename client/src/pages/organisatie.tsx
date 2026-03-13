@@ -421,7 +421,7 @@ function OrganogramTab() {
                     <span className="font-medium text-foreground">{directeur.fullName}</span>
                     <Badge variant="default" className="text-xs">directeur</Badge>
                   </div>
-                  <span className="text-xs font-mono w-8 text-right">{directeur.phoneExtension || ""}</span>
+                  <span className="text-xs font-mono w-10 text-right">{directeur.phoneExtension || ""}</span>
                 </div>
               )}
               {stafAdmins.map((u) => (
@@ -430,7 +430,7 @@ function OrganogramTab() {
                     <span>{u.fullName}</span>
                     <Badge variant="secondary" className="text-xs">admin</Badge>
                   </div>
-                  <span className="text-xs font-mono w-8 text-right">{u.phoneExtension || ""}</span>
+                  <span className="text-xs font-mono w-10 text-right">{u.phoneExtension || ""}</span>
                 </div>
               ))}
             </div>
@@ -485,7 +485,7 @@ function OrganogramTab() {
                         <p className="text-xs text-muted-foreground">Manager</p>
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium">{manager.fullName}</p>
-                          <span className="text-xs font-mono w-8 text-right text-muted-foreground">{manager.phoneExtension || ""}</span>
+                          <span className="text-xs font-mono w-10 text-right text-muted-foreground">{manager.phoneExtension || ""}</span>
                         </div>
                       </div>
                     )}
@@ -494,7 +494,7 @@ function OrganogramTab() {
                         <p className="text-xs text-muted-foreground">{m.functie}</p>
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium">{m.fullName}</p>
-                          <span className="text-xs font-mono w-8 text-right text-muted-foreground">{m.phoneExtension || ""}</span>
+                          <span className="text-xs font-mono w-10 text-right text-muted-foreground">{m.phoneExtension || ""}</span>
                         </div>
                       </div>
                     ))}
@@ -513,7 +513,7 @@ function OrganogramTab() {
                           )}
                         </div>
                       </div>
-                      <span className="text-xs font-mono w-8 text-right text-muted-foreground shrink-0">{m.phoneExtension || ""}</span>
+                      <span className="text-xs font-mono w-10 text-right text-muted-foreground shrink-0">{m.phoneExtension || ""}</span>
                     </div>
                   ))}
                   {!hasManagerBlock && !hasRegularBlock && (
