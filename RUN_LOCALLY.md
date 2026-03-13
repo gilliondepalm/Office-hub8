@@ -38,7 +38,7 @@ These folders must exist for file uploads to work:
 
 ```
 uploads/Aankondigingen/
-uploads/app_pics/
+uploads/App_pics/
 uploads/Beloning/
 uploads/CAO/
 uploads/Instructies/
@@ -49,10 +49,10 @@ uploads/Wetgeving/
 You can create them all at once:
 
 ```bash
-mkdir -p uploads/Aankondigingen uploads/app_pics uploads/Beloning uploads/CAO uploads/Instructies uploads/Nieuwsbrief uploads/Wetgeving
+mkdir -p uploads/Aankondigingen uploads/App_pics uploads/Beloning uploads/CAO uploads/Instructies uploads/Nieuwsbrief uploads/Wetgeving
 ```
 
-The `uploads/app_pics/` folder contains the hero banner images for each page. Without these images, the app works but the page banners will be blank.
+The `uploads/App_pics/` folder contains the hero banner images for each page. Without these images, the app works but the page banners will be blank.
 
 ### 4. Run in development mode
 

@@ -968,7 +968,7 @@ export default function BeheerPage() {
       <PageHero
         title="Beheer"
         subtitle="Beheer gebruikersrechten, afdelingen en functies"
-        imageSrc="/uploads/app_pics/beheer.png"
+        imageSrc="/uploads/App_pics/beheer.png"
         imageAlt="beheer"
       />
       <div className="p-6 space-y-6">

@@ -1037,7 +1037,7 @@ export default function PersonaliaPage() {
       <PageHero
         title="Personalia"
         subtitle={isAdminRole(currentUser?.role) ? "Overzicht van alle medewerkers" : "Uw persoonlijke gegevens"}
-        imageSrc="/uploads/app_pics/personalia.png"
+        imageSrc="/uploads/App_pics/personalia.png"
         imageAlt="personalia"
       />
       <div className="p-6 space-y-6">
